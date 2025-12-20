@@ -1,0 +1,8 @@
+# c/cpp
+*.d
+*.o
+*.so
+*.a
+*.out
+/builds
+/.cache
