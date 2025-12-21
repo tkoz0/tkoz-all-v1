@@ -1,4 +1,5 @@
 add_subdirectory(_template_lib) # header only
-add_subdirectory(_math_lib) # compiled code
+add_subdirectory(_math_lib) # compiled code (depends on compiled library)
 add_subdirectory(_factor_app) # executable
 add_subdirectory(_math_tests) # unit tests
+add_subdirectory(_grid_app) # compiled code (depends on header only library)

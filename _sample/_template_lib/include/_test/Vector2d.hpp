@@ -24,6 +24,10 @@ public:
   const T &at(std::size_t row, std::size_t col) const {
     return mData.at(row).at(col);
   }
+
+  std::size_t rows() const { return mData.size(); }
+
+  std::size_t cols() const { return mData.empty() ? 0 : mData.front().size(); }
 };
 
 } // namespace _test
