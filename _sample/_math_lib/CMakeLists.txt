@@ -11,4 +11,5 @@ target_link_libraries(_math_lib
     PRIVATE
         tkoz_options_common
         _template_lib
+        tkoz-srtest
 )

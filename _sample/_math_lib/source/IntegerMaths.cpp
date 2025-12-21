@@ -47,3 +47,27 @@ std::vector<uint64_t> listDivisors(uint64_t n) {
 }
 
 } // namespace _test
+
+#if TEST
+
+#include <tkoz/SRTest.hpp>
+
+TEST_CREATE(smallFactors) {
+  TEST_REQUIRE((_test::primeFactorization(5) == std::vector<uint64_t>{5}));
+  TEST_REQUIRE(
+      (_test::primeFactorization(18) == std::vector<uint64_t>{2, 3, 3}));
+  TEST_REQUIRE(
+      (_test::primeFactorization(28) == std::vector<uint64_t>{2, 2, 7}));
+  TEST_REQUIRE((_test::primeFactorization(1) == std::vector<uint64_t>{}));
+}
+
+TEST_CREATE(largeFactors) {
+  TEST_REQUIRE(_test::primeFactorization(1000003) ==
+               std::vector<uint64_t>{1000003});
+  TEST_REQUIRE((_test::primeFactorization(1022117) ==
+                std::vector<uint64_t>{1009, 1013}));
+  TEST_REQUIRE(
+      (_test::primeFactorization(994009) == std::vector<uint64_t>{997, 997}));
+}
+
+#endif

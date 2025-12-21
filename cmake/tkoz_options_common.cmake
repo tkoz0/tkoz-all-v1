@@ -13,3 +13,6 @@ target_compile_options(tkoz_options_common INTERFACE $<$<CONFIG:RelWithDebInfo>:
 target_compile_options(tkoz_options_common INTERFACE $<$<CONFIG:MinSizeRel>: -Os -Werror >)
 
 target_compile_options(tkoz_options_common INTERFACE $<$<CONFIG:Release>: -O3 -Werror >)
+
+# Define TEST macro for Debug and RelWithDebInfo builds
+target_compile_definitions(tkoz_options_common INTERFACE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>: TEST >)

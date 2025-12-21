@@ -27,3 +27,6 @@ enable_testing()
 
 # Projects in _test are just for testing CMake setup and similar
 add_subdirectory(_sample)
+
+# Project subdirectories
+add_subdirectory(srtest)
