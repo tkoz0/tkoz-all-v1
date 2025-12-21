@@ -21,5 +21,9 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
         Debug Release RelWithDebInfo MinSizeRel)
 endif()
 
+# Use CTest for unit testing
+include(CTest)
+enable_testing()
+
 # Projects in _test are just for testing CMake setup and similar
 add_subdirectory(_test)
