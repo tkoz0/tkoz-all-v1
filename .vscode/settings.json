@@ -1,6 +1,6 @@
 {
     "clangd.arguments": [
-        "--compile-commands-dir=build",
+        "--compile-commands-dir=builds",
         "--header-insertion=never"
     ],
     // Run clang-format on c/cpp
