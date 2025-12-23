@@ -5,6 +5,7 @@
 #include <source_location>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -91,7 +92,7 @@ class TestFailure : public std::runtime_error {
 /// \param message An optional message for additional information
 /// \param srcLoc Source location object (usually just use the default)
 inline void
-require(bool condition, std::string message = "",
+require(bool condition, std::string_view message = "",
         std::source_location srcLoc = std::source_location::current()) {
   if (!condition) [[unlikely]] {
     if (message.empty()) {
@@ -107,7 +108,7 @@ require(bool condition, std::string message = "",
 
 } // namespace tkoz::srtest
 
-/// Create a test with the provided name (not quoted) and a curly brack {}
+/// Create a test with the provided name (not quoted) and a curly brace {}
 /// block following for the function definition.
 /// Usage: TEST_CREATE(testName) { ... test code ... }
 #define TEST_CREATE(name)                                                      \
@@ -130,27 +131,33 @@ require(bool condition, std::string message = "",
 /// #include <tkoz/SRTest.hpp>
 #ifdef TKOZ_SRTEST_MAIN
 
+#include <exception>
+#include <format>
+#include <iostream>
+#include <utility>
+#include <vector>
+
 int main(int argc, char **argv) {
-  std::ignore = argc;
-  std::ignore = argv;
+  ::std::ignore = argc;
+  ::std::ignore = argv;
 
   const auto &allTests = ::tkoz::srtest::TestRegistry::instance().allTests();
-  std::cout << std::format("Found {} tests", allTests.size()) << std::endl;
+  ::std::cout << std::format("Found {} tests", allTests.size()) << ::std::endl;
 
   for (const auto &test : allTests) {
-    std::cout << std::format("Running test: {}", test.name) << std::endl;
+    ::std::cout << std::format("Running test: {}", test.name) << ::std::endl;
     try {
       test();
     } catch (const std::exception &exc) {
-      std::cout << exc.what() << std::endl;
+      ::std::cout << exc.what() << ::std::endl;
       return 1;
     } catch (...) {
-      std::cout << "Test failure: unknown exception type" << std::endl;
+      ::std::cout << "Test failure: unknown exception type" << ::std::endl;
       return 1;
     }
   }
 
-  std::cout << "Done" << std::endl;
+  ::std::cout << "Done" << ::std::endl;
   return 0;
 }
 

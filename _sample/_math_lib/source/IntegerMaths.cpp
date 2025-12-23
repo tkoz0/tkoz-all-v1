@@ -70,4 +70,4 @@ TEST_CREATE(largeFactors) {
       (_test::primeFactorization(994009) == std::vector<uint64_t>{997, 997}));
 }
 
-#endif
+#endif // TEST
