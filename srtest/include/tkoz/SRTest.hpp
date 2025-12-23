@@ -1,3 +1,8 @@
+/// SRTest - statically registered test library
+///
+/// Tests are defined along library code and get registered to an executable
+/// with static linking.
+
 #pragma once
 
 #include <format>
