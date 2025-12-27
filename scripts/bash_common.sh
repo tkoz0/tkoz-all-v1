@@ -13,8 +13,8 @@ check_build_type() {
         fi
     done
     if [[ $is_valid -ne 0 ]]; then
-        echo not a valid build type
-        echo valid build types are: "${build_types[@]}"
+        echo 'not a valid build type'
+        echo 'valid build types are:' "${build_types[@]}"
         exit 1
     fi
     return $is_valid
@@ -33,8 +33,8 @@ check_compiler_type() {
         fi
     done
     if [[ $is_valid -ne 0 ]]; then
-        echo not a valid compiler type
-        echo valid compiler types are: "${compiler_types[@]}"
+        echo 'not a valid compiler type'
+        echo 'valid compiler types are:' "${compiler_types[@]}"
         exit 1
     fi
     return $is_valid
@@ -48,7 +48,7 @@ toolchain_file() {
     elif [[ "$1" == "Clang" ]]; then
         echo 'clang.cmake'
     else
-        echo not a valid compiler type
+        echo 'not a valid compiler type'
         exit 1
     fi
 }

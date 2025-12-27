@@ -11,7 +11,7 @@ The build types available are: Debug, Release, RelWithDebInfo, MinSizeRel, and
 Coverage. Additionally, tests with CTest can be run with
 `./scripts/cmake_ctest.sh Debug GCC`
 
-# creating a library (compiled)
+## creating a library (compiled)
 
 Create a directory for the library in the appropriate place. Then it should get
 a `CMakeLists.txt` like the one below and 2 subdirectories named `source` and
@@ -38,7 +38,7 @@ target_link_libraries(library-name
 )
 ```
 
-# creating a library (header only)
+## creating a library (header only)
 
 Make a directory for it, and inside it just needs a `CMakeLists.txt` like the
 one below and a `include` directory which contains the full paths inside.
@@ -57,7 +57,7 @@ target_link_libraries(header-library
 )
 ```
 
-# creating tests
+## creating tests
 
 For compiled libraries, the tests go at the bottom of the `.cpp` files after
 the actual library code. For header only libraries, they get a separate project
@@ -81,7 +81,7 @@ The ideas/concepts for a test library may still be work in progress and could
 change. The goal is to have macros that can be changed later without changing
 the test code and to be able to support dynamic test discovery in the future.
 
-# creating an executable (for an application)
+## creating an executable (for an application)
 
 These get a `CMakeLists.txt` in their directory and a `source` directory. If
 they have headers, they go inside `source` as well. Applications do not have
@@ -99,7 +99,7 @@ target_link_libraries(app-name
 )
 ```
 
-# creating an executable (for CTest unit tests)
+## creating an executable (for CTest unit tests)
 
 This is not recommended for future scalability. Create an executable with a
 `CMakeLists.txt` and a `source` directory. The executable should take command
@@ -122,7 +122,7 @@ add_test(NAME library-test-app-test-2 COMMAND library-test-app test2)
 add_test(NAME library-test-app-test-3 COMMAND library-test-app test3)
 ```
 
-# creating an executable (for statically linked tests)
+## creating an executable (for statically linked tests)
 
 This is done by making a simple executable to use the main function from the
 `tkoz-srtest` library. Tests are statically registered from the libraries
@@ -160,3 +160,33 @@ target_link_libraries(_test_run
 ```
 
 Currently this test runner is minimal and needs more features.
+
+## coverage reports
+
+These require a build with the instrumentation for coverage reports so
+"Coverage" is a separate build type, with either GCC and Clang. Once a build
+for coverage is available, the required executables must be run to output the
+coverage data which is used to generate reports.
+
+TODO setup a system for running the required executables to generate coverage
+data easily. Additionally for Clang, an executable is needed to link all
+libraries used in the coverage report (see `scripts/cov_generate.sh`). It may
+be fine to make a script (`scripts/cov_runner.sh`) to generate the coverage
+data, which must be serial for GCC and can be parallel for Clang.
+
+### gcc
+
+GCC builds place coverage (`*.gcda` files) next to the compiled object files.
+Coverage data is accumulated by multiple runs, but they cannot be in parallel
+since they all try to write to the same file. The paths used by instrumented
+executables from GCC are fixed and the coverage system is not suitable for large
+scale parallelism. Coverage data is accumulated with `lcov` and reports are
+generated with `genhtml`.
+
+### clang
+
+By default, coverage data is written to `default.profraw` in the current working
+directory (existing files are overwritten). This file location can be customized
+with the `LLVM_PROFILE_FILE` environment variable. This coverage system can be
+parallelized at large scale. Data from coverage runs are merged with
+`llvm-profdata` and the reports are generated with `llvm-cov`.
