@@ -11,8 +11,9 @@ namespace _test {
 /// \return prime factors smallest to largest counting multiplicity
 std::vector<uint64_t> primeFactorization(uint64_t n) {
   std::vector<uint64_t> result;
-  if (n < 2)
+  if (n < 2) {
     return result;
+  }
   while (n % 2 == 0) {
     n /= 2;
     result.push_back(2);
