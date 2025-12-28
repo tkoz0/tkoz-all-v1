@@ -25,6 +25,9 @@ endif()
 include(CTest)
 enable_testing()
 
+# Use Doxygen for documentation
+include(${CMAKE_SOURCE_DIR}/docs/doxygen.cmake)
+
 # Projects in _test are just for testing CMake setup and similar
 add_subdirectory(_sample)
 

@@ -6,6 +6,9 @@
 
 namespace _test {
 
+/// Finds prime factors of a number, smallest to largest, with multiplicity.
+/// \param n number to factor
+/// \return prime factors smallest to largest counting multiplicity
 std::vector<uint64_t> primeFactorization(uint64_t n) {
   std::vector<uint64_t> result;
   if (n < 2)
@@ -28,6 +31,9 @@ std::vector<uint64_t> primeFactorization(uint64_t n) {
   return result;
 }
 
+/// Finds all positive divisors from smallest to largest.
+/// \param n number to list divisors of
+/// \return positive divisors from smallest to largest
 std::vector<uint64_t> listDivisors(uint64_t n) {
   std::vector<uint64_t> result;
   std::vector<uint64_t> resultBack;

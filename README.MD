@@ -10,6 +10,7 @@ intended to be a bit of a playground for serious projects to eventually emerge.
   - may need more testing, clang requires an executable that links all libraries
 - clang-tidy and cppcheck
 - documentation with doxygen
+  - clang-doc too?
 - compile with instructions like avx2/avx512
 
 # ideas
