@@ -23,10 +23,10 @@ target_compile_options(tkoz_options_common INTERFACE
 target_compile_options(tkoz_options_common INTERFACE
     $<$<CONFIG:Coverage>: -g -O0 >)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(tkoz_options_common INTERFACE $<$<CONFIG:Coverage>: --coverage >)
     target_link_options(tkoz_options_common INTERFACE $<$<CONFIG:Coverage>: --coverage >)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(tkoz_options_common INTERFACE $<$<CONFIG:Coverage>: -fprofile-instr-generate -fcoverage-mapping >)
     target_link_options(tkoz_options_common INTERFACE $<$<CONFIG:Coverage>: -fprofile-instr-generate >)
 endif()

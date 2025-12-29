@@ -1,6 +1,6 @@
 find_package(Doxygen)
 
-if (DOXYGEN_FOUND)
+if(DOXYGEN_FOUND)
     set(DOXYGEN_INPUT
         "${CMAKE_SOURCE_DIR}"
     )
@@ -10,7 +10,7 @@ if (DOXYGEN_FOUND)
         "${CMAKE_BINARY_DIR}/Doxyfile"
         @ONLY
     )
-    add_custom_target(docs
+    add_custom_target(docs-doxygen
         COMMAND "${DOXYGEN_EXECUTABLE}" "${CMAKE_BINARY_DIR}/Doxyfile"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         COMMENT "Generating documentation with Doxygen"
