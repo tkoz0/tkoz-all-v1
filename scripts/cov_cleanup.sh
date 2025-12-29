@@ -3,8 +3,9 @@
 # cov_cleanup.sh <GCC|Clang>
 source "$(dirname "$0")/bash_common.sh"
 check_compiler_type "$1"
+root_dir=$(realpath "$(dirname "$0")/..")
 per_file_cmd='echo '\''removing:'\'' "$1" && rm -f "$1"'
-find "$(dirname "$0")/../builds/Coverage-$1" \
+find "$root_dir/builds/Coverage-$1" \
     \( \
         -name '*.gcda' -o \
         -name '*.profraw' -o \
@@ -13,7 +14,7 @@ find "$(dirname "$0")/../builds/Coverage-$1" \
     \) \
     -exec sh -c "$per_file_cmd" _ {} \;
 # maybe prefer the following which would be faster
-#find "$(dirname "$0")/../builds/Coverage-$1" \
+#find "$root_dir/builds/Coverage-$1" \
 #    \( \
 #        -name '*.gcda' -o \
 #        -name '*.profraw' -o \

@@ -6,3 +6,4 @@
 *.out
 /builds
 /.cache
+/compile_commands.json

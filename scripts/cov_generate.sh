@@ -2,6 +2,7 @@
 source "$(dirname "$0")/bash_common.sh"
 check_compiler_type "$1"
 build_dir="$(dirname "$0")/../builds/Coverage-$1"
+root_dir=$(realpath "$(dirname "$0")/..")
 
 if [[ "$1" == 'GCC' ]]; then
     echo 'generating coverage reports for gcc compiled projects'
