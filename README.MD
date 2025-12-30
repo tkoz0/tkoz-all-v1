@@ -10,6 +10,15 @@ intended to be a bit of a playground for serious projects to eventually emerge.
   - may need more testing, clang requires an executable that links all libraries
 - clang-tidy and cppcheck
 - compile with instructions like avx2/avx512
+- profiler tools
+- memory check (valgrind)
+- saving with clang-format and adjusting the format settings
+- some cicd setup
+- additional documentation separate from code files (possibly markdown)
+- explicit library export macros
+- git hooks
+- further linting
+- cmake presets
 
 # ideas
 

@@ -1,0 +1,18 @@
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15)
+        message(STATUS "Found GCC version below 15, development was started with 15.2.1")
+    endif()
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 21)
+        message(STATUS "Found Clang version below 21, development was started with 21.1.6")
+    endif()
+else()
+    message(STATUS "Compiler type is neither GCC nor Clang")
+endif()
+
+# Check that C++23 is available
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag("-std=c++23" HAS_CXX23)
+if(NOT HAS_CXX23)
+    message(FATAL_ERROR "This project requires C++23 support")
+endif()

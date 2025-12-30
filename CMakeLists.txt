@@ -9,9 +9,10 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Add in interface link targets for common build options
+# Add extra stuff from separate .cmake files
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include(tkoz_options_common)
+include(tkoz_options_common) # Common compiler/linker options
+include(tkoz_compiler_check) # Compiler check for GCC/Clang version
 
 # Set default build type and available options
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
