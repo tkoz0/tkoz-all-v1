@@ -29,20 +29,24 @@ struct TestInstance {
   /// Call the test function.
   void operator()() const { func(); }
 
-  /// Function object to run the test
+  /// Function object to run the test.
   const TestFunction func;
 
-  /// Name/identifier for the test
+  /// Name/identifier for the test.
   const std::string name;
 };
 
 /// \brief The registry storing all statically registered tests.
 class TestRegistry {
 private:
+  /// All tests that have been registered.
   std::vector<TestInstance> mAllTests;
+
   TestRegistry() = default;
   TestRegistry(const TestRegistry &) = delete;
   TestRegistry(TestRegistry &&) = delete;
+  TestRegistry &operator=(const TestRegistry &) = delete;
+  TestRegistry &operator=(TestRegistry &&) = delete;
 
 public:
   /// \return The singleton instance keeping track of available tests.
@@ -56,6 +60,20 @@ public:
   allTests() const noexcept {
     return mAllTests;
   }
+
+  /// \return Begin iterator for all registered tests.
+  [[nodiscard]] inline auto begin() const noexcept { return mAllTests.begin(); }
+
+  /// \return End iterator for all registered tests.
+  [[nodiscard]] inline auto end() const noexcept { return mAllTests.end(); }
+
+  /// \return Number of registered tests.
+  [[nodiscard]] inline std::size_t size() const noexcept {
+    return mAllTests.size();
+  }
+
+  /// \return True if there are no registered tests.
+  [[nodiscard]] inline bool empty() const noexcept { return mAllTests.empty(); }
 
   /// Add a test to the registry.
   /// \param func Function object for running the test
@@ -93,14 +111,15 @@ class TestFailure : public std::runtime_error {
 };
 
 /// Require a condition to be true, fails the test if false.
-/// \param condition A boolean testable
-/// \param message An optional message for additional information
-/// \param srcLoc Source location object (usually just use the default)
+/// \param condition A boolean testable.
+/// \param message An optional message for additional information.
+/// \param srcLoc Source location object (usually just use the default).
+/// \throw TestFailure If \a condition evaluates to false.
 inline void
 require(bool condition, std::string_view message = "",
         std::source_location srcLoc = std::source_location::current()) {
   if (!condition) [[unlikely]] {
-    if (message.empty()) {
+    if (message.empty()) [[unlikely]] {
       throw TestFailure(std::format("Test failure at {}:{}", srcLoc.file_name(),
                                     srcLoc.line()));
     } else {
@@ -123,11 +142,46 @@ require(bool condition, std::string_view message = "",
   void _tkoz_srtest_func_##name()
 
 /// Require a condition to be true, fail the test if false.
-#define TEST_REQUIRE(cond) ::tkoz::srtest::require(static_cast<bool>(cond))
+#define TEST_REQUIRE(cond)                                                     \
+  ::tkoz::srtest::require(static_cast<bool>(cond),                             \
+                          ::std::format("{} evaluated to false", #cond))
 
 /// Same as TEST_REQUIRE but with a message for extra information.
 #define TEST_REQUIRE_MSG(cond, msg)                                            \
   ::tkoz::srtest::require(static_cast<bool>(cond), msg)
+
+/// Require expressions to be equal, with default message.
+#define TEST_REQUIRE_EQ(a, b)                                                  \
+  ::tkoz::srtest::require(static_cast<bool>((a) == (b)),                       \
+                          ::std::format("{} is not equal to {}", #a, #b))
+
+/// Require expressions to be not equal, with default message.
+#define TEST_REQUIRE_NE(a, b)                                                  \
+  ::tkoz::srtest::require(static_cast<bool>((a) != (b)),                       \
+                          ::std::format("{} is equal to {}", #a, #b))
+
+/// Require expressions to compare less than, with default message.
+#define TEST_REQUIRE_LT(a, b)                                                  \
+  ::tkoz::srtest::require(static_cast<bool>((a) < (b)),                        \
+                          ::std::format("{} is not less than {}", #a, #b))
+
+/// Require expressions to compare less than or equal to, with default message.
+#define TEST_REQUIRE_LE(a, b)                                                  \
+  ::tkoz::srtest::require(                                                     \
+      static_cast<bool>((a) <= (b)),                                           \
+      ::std::format("{} is not less than or equal to {}", #a, #b))
+
+/// Require expressions to compare greater than, with default message.
+#define TEST_REQUIRE_GT(a, b)                                                  \
+  ::tkoz::srtest::require(static_cast<bool>((a) > (b)),                        \
+                          ::std::format("{} is not greater than {}", #a, #b))
+
+/// Require expressions to compare greater than or equal to, with default
+/// message.
+#define TEST_REQUIRE_GE(a, b)                                                  \
+  ::tkoz::srtest::require(                                                     \
+      static_cast<bool>((a) >= (b)),                                           \
+      ::std::format("{} is not greater than or equal to {}", #a, #b))
 
 /// The main function for the test runner. This macro should be defined before
 /// including this file in a single source file for the test runner executable.
@@ -147,13 +201,14 @@ int main(int argc, char **argv) {
   ::std::ignore = argv;
 
   const auto &allTests = ::tkoz::srtest::TestRegistry::instance().allTests();
-  ::std::cout << std::format("Found {} tests", allTests.size()) << ::std::endl;
+  ::std::cout << ::std::format("Found {} tests", allTests.size())
+              << ::std::endl;
 
   for (const auto &test : allTests) {
-    ::std::cout << std::format("Running test: {}", test.name) << ::std::endl;
+    ::std::cout << ::std::format("Running test: {}", test.name) << ::std::endl;
     try {
       test();
-    } catch (const std::exception &exc) {
+    } catch (const ::std::exception &exc) {
       ::std::cout << exc.what() << ::std::endl;
       return 1;
     } catch (...) {
@@ -166,4 +221,4 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-#endif
+#endif // TKOZ_SRTEST_MAIN

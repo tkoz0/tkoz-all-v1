@@ -19,6 +19,8 @@ intended to be a bit of a playground for serious projects to eventually emerge.
 - git hooks
 - further linting
 - cmake presets
+- all built binaries in the same directory?
+- customize clang-format settings and make sample files to show the results
 
 # ideas
 
