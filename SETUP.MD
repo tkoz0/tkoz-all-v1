@@ -14,8 +14,8 @@ Coverage. Additionally, tests with CTest can be run with
 ## creating a library (compiled)
 
 Create a directory for the library in the appropriate place. Then it should get
-a `CMakeLists.txt` like the one below and 2 subdirectories named `source` and
-`include`. Inside include we need the full path which for many of my things is
+a `CMakeLists.txt` like the one below and 2 subdirectories named `src` and
+`inc`. Inside `inc` we need the full path which for many of my things is
 going to start with `tkoz/`. Tests are defined inside the `.cpp` files and are
 found by a test runner that links the library (via static registration).
 
@@ -24,11 +24,11 @@ add_library(library-name)
 
 # Recursively find .cpp files in source.
 # CMake should rerun when a .cpp file is created or removed.
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS source/*.cpp)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 target_sources(library-name PRIVATE ${SOURCES})
 
 target_include_directories(library-name
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc")
 
 target_link_libraries(library-name
     PRIVATE
@@ -41,7 +41,7 @@ target_link_libraries(library-name
 ## creating a library (header only)
 
 Make a directory for it, and inside it just needs a `CMakeLists.txt` like the
-one below and a `include` directory which contains the full paths inside.
+one below and a `inc` directory which contains the full paths inside.
 Testing will require a separate project which links this library. See the
 appropriate section for that.
 
@@ -49,7 +49,7 @@ appropriate section for that.
 add_library(header-library INTERFACE)
 
 target_include_directories(header-library
-    INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
 
 target_link_libraries(header-library
     INTERFACE
@@ -83,14 +83,14 @@ the test code and to be able to support dynamic test discovery in the future.
 
 ## creating an executable (for an application)
 
-These get a `CMakeLists.txt` in their directory and a `source` directory. If
-they have headers, they go inside `source` as well. Applications do not have
+These get a `CMakeLists.txt` in their directory and a `src` directory. If
+they have headers, they go inside `src` as well. Applications do not have
 a public interface that other projects can link to. They also should not have
 test cases.
 
 ```cmake
 add_executable(app-name)
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS source/*.cpp)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 target_sources(app-name PRIVATE ${SOURCES})
 target_link_libraries(app-name
     PRIVATE
@@ -102,14 +102,14 @@ target_link_libraries(app-name
 ## creating an executable (for CTest unit tests)
 
 This is not recommended for future scalability. Create an executable with a
-`CMakeLists.txt` and a `source` directory. The executable should take command
+`CMakeLists.txt` and a `src` directory. The executable should take command
 line arguments for running its tests. Then for CTest, use the `add_test()`
 function in `CMakeLists.txt` to add tests which each have a name and a command
 which should pass arguments to the executable.
 
 ```cmake
 add_executable(library-test-app)
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS source/*.cpp)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 target_link_libraries(library-test-app
     PRIVATE
@@ -194,4 +194,7 @@ parallelized at large scale. Data from coverage runs are merged with
 ## documentation
 
 These can be created by running the `cmake_clang_doc.sh` or `cmake_doxygen.sh`
-scripts. They generate documentation in the specified build area.
+scripts. They generate documentation in the specified build area. Note that
+Doxygen is fast and clang-doc is slow. Also, Doxygen produces nicer looking
+documentation pages from comments, clang-doc can produce more accurate
+documentation because it uses the clang compiler.

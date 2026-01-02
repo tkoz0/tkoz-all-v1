@@ -3,7 +3,7 @@
 root_dir=$(realpath "$(dirname "$0")/..")
 clang-tidy -p "$root_dir" \
     -checks='*,clang-analyzer-*' \
-    -header-filter='^(source|include)/' \
+    -header-filter='^(src|inc)/' \
     -warnings-as-errors='*' \
     "$@"
 # note: clang-tidy should only be given .cpp files

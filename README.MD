@@ -4,11 +4,18 @@ This is an experiment to put "all" of my C/C++ projects (maybe other languages
 too) into a single repo with a setup inspired by the one in my workplace. It is
 intended to be a bit of a playground for serious projects to eventually emerge.
 
-# todo
+# todos for later
 
+There is always more than can be done, but how much is reasonable for a personal
+project is questionable.
+
+- customize clang-format settings and make sample files to show the results
+- documentation (currently doxygen and clang-doc)
+- static analysis (currently clang-tidy and cppcheck)
+- code coverage automation
+- stuff with memory debugging
 - cmake presets
 - git hooks
-- rename include/source to inc/src
 - compile with instructions like avx2/avx512
 - profiler tools
 - saving with clang-format and adjusting the format settings
@@ -16,7 +23,6 @@ intended to be a bit of a playground for serious projects to eventually emerge.
 - additional documentation separate from code files (possibly markdown)
 - explicit library export macros
 - all built binaries in the same directory?
-- customize clang-format settings and make sample files to show the results
 
 # ideas
 
