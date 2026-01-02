@@ -1,0 +1,25 @@
+Checks: >
+  -*,
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers,
+  -readability-identifier-length
+
+# more expensive checks to avoid running every time
+#  clang-analyzer-*,
+
+#WarningsAsErrors: ''
+
+HeaderFilterRegex: '^(source|include)/'
+SystemHeaders: false
+
+FormatStyle: none
+
+CheckOptions:
+  - key: misc-unused-parameters.IgnoreMacros
+    value: '1'
+  - key: llvm-include-order.IgnoreMainHeader
+    value: 'false'

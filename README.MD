@@ -6,19 +6,17 @@ intended to be a bit of a playground for serious projects to eventually emerge.
 
 # todo
 
-- gcov/llvm-cov code coverage
-  - may need more testing, clang requires an executable that links all libraries
-- clang-tidy and cppcheck
+- further linting and format on save
+- memory check (valgrind)
+- cmake presets
+- git hooks
+- rename include/source to inc/src
 - compile with instructions like avx2/avx512
 - profiler tools
-- memory check (valgrind)
 - saving with clang-format and adjusting the format settings
 - some cicd setup
 - additional documentation separate from code files (possibly markdown)
 - explicit library export macros
-- git hooks
-- further linting
-- cmake presets
 - all built binaries in the same directory?
 - customize clang-format settings and make sample files to show the results
 

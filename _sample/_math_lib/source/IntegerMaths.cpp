@@ -65,7 +65,7 @@ TEST_CREATE(smallFactors) {
       (_test::primeFactorization(18) == std::vector<uint64_t>{2, 3, 3}));
   TEST_REQUIRE(
       (_test::primeFactorization(28) == std::vector<uint64_t>{2, 2, 7}));
-  TEST_REQUIRE((_test::primeFactorization(1) == std::vector<uint64_t>{}));
+  TEST_REQUIRE(_test::primeFactorization(1).empty());
 }
 
 TEST_CREATE(largeFactors) {

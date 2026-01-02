@@ -24,26 +24,32 @@ public:
   /// \param row first index
   /// \param col second index
   /// \return reference to element at given 2d index
-  T &operator[](std::size_t row, std::size_t col) { return mData[row][col]; }
+  [[nodiscard]] T &operator[](std::size_t row, std::size_t col) {
+    return mData[row][col];
+  }
 
   /// Access by 2d index but return const reference
-  const T &operator[](std::size_t row, std::size_t col) const {
+  [[nodiscard]] const T &operator[](std::size_t row, std::size_t col) const {
     return mData[row][col];
   }
 
   /// Access by 2d index with bounds checking (non const)
-  T &at(std::size_t row, std::size_t col) { return mData.at(row).at(col); }
+  [[nodiscard]] T &at(std::size_t row, std::size_t col) {
+    return mData.at(row).at(col);
+  }
 
   /// Access by 2d index with bounds checking (const)
-  const T &at(std::size_t row, std::size_t col) const {
+  [[nodiscard]] const T &at(std::size_t row, std::size_t col) const {
     return mData.at(row).at(col);
   }
 
   /// \return number of rows
-  std::size_t rows() const { return mData.size(); }
+  [[nodiscard]] std::size_t rows() const { return mData.size(); }
 
   /// \return number of cols
-  std::size_t cols() const { return mData.empty() ? 0 : mData.front().size(); }
+  [[nodiscard]] std::size_t cols() const {
+    return mData.empty() ? 0 : mData.front().size();
+  }
 };
 
 } // namespace _test
