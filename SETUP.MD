@@ -190,3 +190,8 @@ directory (existing files are overwritten). This file location can be customized
 with the `LLVM_PROFILE_FILE` environment variable. This coverage system can be
 parallelized at large scale. Data from coverage runs are merged with
 `llvm-profdata` and the reports are generated with `llvm-cov`.
+
+## documentation
+
+These can be created by running the `cmake_clang_doc.sh` or `cmake_doxygen.sh`
+scripts. They generate documentation in the specified build area.

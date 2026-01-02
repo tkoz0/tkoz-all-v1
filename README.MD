@@ -6,8 +6,6 @@ intended to be a bit of a playground for serious projects to eventually emerge.
 
 # todo
 
-- further linting and format on save
-- memory check (valgrind)
 - cmake presets
 - git hooks
 - rename include/source to inc/src
