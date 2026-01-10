@@ -5,8 +5,11 @@
 
 #pragma once
 
+#include <cstdint>
 #include <format>
 #include <functional>
+#include <map>
+#include <ranges>
 #include <source_location>
 #include <stdexcept>
 #include <string>
@@ -18,22 +21,48 @@ namespace tkoz::srtest {
 
 using TestFunction = std::function<void()>;
 
+/// \brief Test category enum.
+enum class TestCategory : std::uint8_t { FAST, SLOW };
+
+/// Convert a test category to a string
+[[maybe_unused]] static std::string testCategoryString(TestCategory cat) {
+  switch (cat) {
+  case TestCategory::FAST:
+    return "FAST";
+  case TestCategory::SLOW:
+    return "SLOW";
+  default:
+    throw std::runtime_error("Unhandled test category");
+  }
+}
+
 /// \brief The data associated with a single test.
 struct TestInstance {
   TestInstance() = delete;
-  TestInstance(TestFunction func, std::string name)
-      : func(std::move(func)), name(std::move(name)) {}
+  TestInstance(TestFunction func, std::string name, std::string file,
+               std::size_t line, TestCategory cat)
+      : func(std::move(func)), name(std::move(name)), file(std::move(file)),
+        line(line), cat(cat) {}
   TestInstance(const TestInstance &) = default;
   TestInstance(TestInstance &&) = default;
 
   /// Call the test function.
-  void operator()() const { func(); }
+  void run() const { func(); }
 
   /// Function object to run the test.
   const TestFunction func;
 
   /// Name/identifier for the test.
   const std::string name;
+
+  /// File containing the test
+  const std::string file;
+
+  /// Line where test is defined
+  const std::size_t line;
+
+  /// Test category
+  TestCategory cat;
 };
 
 /// \brief The registry storing all statically registered tests.
@@ -42,13 +71,16 @@ private:
   /// All tests that have been registered.
   std::vector<TestInstance> mAllTests;
 
+  /// Tests grouped by file, keeps track of indexes in mAllTests
+  std::map<std::string, std::vector<std::size_t>> mPerFileTests;
+
+public:
   TestRegistry() = default;
   TestRegistry(const TestRegistry &) = delete;
   TestRegistry(TestRegistry &&) = delete;
   TestRegistry &operator=(const TestRegistry &) = delete;
   TestRegistry &operator=(TestRegistry &&) = delete;
 
-public:
   /// \return The singleton instance keeping track of available tests.
   [[nodiscard]] inline static TestRegistry &instance() noexcept {
     static TestRegistry testRegistry;
@@ -59,6 +91,27 @@ public:
   [[nodiscard]] inline const std::vector<TestInstance> &
   allTests() const noexcept {
     return mAllTests;
+  }
+
+  /// \return All files with tests.
+  [[nodiscard]] inline auto allFiles() const noexcept {
+    return std::views::keys(mPerFileTests);
+  }
+
+  /// \return Number of tests in a file.
+  [[nodiscard]] inline std::size_t
+  numTestsInFile(const std::string &file) const noexcept {
+    return mPerFileTests.at(file).size();
+  }
+
+  /// \return All tests in a file.
+  [[nodiscard]] inline auto
+  testsInFile(const std::string &file) const noexcept {
+    return mPerFileTests.at(file) |
+           std::views::transform(
+               [this](std::size_t index) -> const TestInstance & {
+                 return mAllTests[index];
+               });
   }
 
   /// \return Begin iterator for all registered tests.
@@ -78,8 +131,11 @@ public:
   /// Add a test to the registry.
   /// \param func Function object for running the test
   /// \param name Name/identifier for the test
-  inline void addTest(TestFunction func, std::string name) {
-    mAllTests.emplace_back(std::move(func), std::move(name));
+  inline void addTest(TestFunction func, std::string name, std::string file,
+                      std::size_t line, TestCategory cat) {
+    mPerFileTests[file].push_back(mAllTests.size());
+    mAllTests.emplace_back(std::move(func), std::move(name), std::move(file),
+                           line, cat);
   }
 };
 
@@ -87,8 +143,10 @@ public:
 /// For convenience, usually you would use the TEST_CREATE macro.
 /// \param name A string identifier for the test.
 /// \param func A function object used to run the test.
-inline void registerTest(std::string name, std::function<void()> func) {
-  TestRegistry::instance().addTest(std::move(func), std::move(name));
+inline void registerTest(std::string name, std::function<void()> func,
+                         std::string file, std::size_t line, TestCategory cat) {
+  TestRegistry::instance().addTest(std::move(func), std::move(name),
+                                   std::move(file), line, cat);
 }
 
 /// \brief A class for registering tests. Create a static instance of this
@@ -97,11 +155,14 @@ inline void registerTest(std::string name, std::function<void()> func) {
 class TestRegistrar {
 public:
   TestRegistrar() = delete;
+
   /// This constructor adds a test to the test registry.
   /// \param func The function object to run the test.
   /// \param name A name/identifier for the test.
-  TestRegistrar(TestFunction func, std::string name) {
-    TestRegistry::instance().addTest(std::move(func), std::move(name));
+  TestRegistrar(TestFunction func, std::string name, std::string file,
+                std::size_t line, TestCategory cat) {
+    TestRegistry::instance().addTest(std::move(func), std::move(name),
+                                     std::move(file), line, cat);
   }
 };
 
@@ -135,11 +196,17 @@ require(bool condition, std::string_view message = "",
 /// Create a test with the provided name (not quoted) and a curly brace {}
 /// block following for the function definition.
 /// Usage: TEST_CREATE(testName) { ... test code ... }
-#define TEST_CREATE(name)                                                      \
-  void _tkoz_srtest_func_##name();                                             \
-  static ::tkoz::srtest::TestRegistrar _tkoz_srtest_sr_##name(                 \
-      _tkoz_srtest_func_##name, #name);                                        \
-  void _tkoz_srtest_func_##name()
+#define TEST_CREATE(name, cat)                                                 \
+  static void _tkoz_srtest_func_##name();                                      \
+  static ::tkoz::srtest::TestRegistrar _tkoz_srtest_reg_##name(                \
+      _tkoz_srtest_func_##name, #name, __FILE__, __LINE__, cat);               \
+  static void _tkoz_srtest_func_##name()
+
+#define TEST_CREATE_FAST(name)                                                 \
+  TEST_CREATE(name, ::tkoz::srtest::TestCategory::FAST)
+
+#define TEST_CREATE_SLOW(name)                                                 \
+  TEST_CREATE(name, ::tkoz::srtest::TestCategory::SLOW)
 
 /// Require a condition to be true, fail the test if false.
 #define TEST_REQUIRE(cond)                                                     \
@@ -200,20 +267,30 @@ int main(int argc, char **argv) {
   ::std::ignore = argc;
   ::std::ignore = argv;
 
-  const auto &allTests = ::tkoz::srtest::TestRegistry::instance().allTests();
-  ::std::cout << ::std::format("Found {} tests", allTests.size())
+  const auto &registry = ::tkoz::srtest::TestRegistry::instance();
+
+  const auto &allTests = registry.allTests();
+  ::std::cout << ::std::format("Found {} registered tests", allTests.size())
               << ::std::endl;
 
-  for (const auto &test : allTests) {
-    ::std::cout << ::std::format("Running test: {}", test.name) << ::std::endl;
-    try {
-      test();
-    } catch (const ::std::exception &exc) {
-      ::std::cout << exc.what() << ::std::endl;
-      return 1;
-    } catch (...) {
-      ::std::cout << "Test failure: unknown exception type" << ::std::endl;
-      return 1;
+  for (const auto &file : registry.allFiles()) {
+    ::std::cout << ::std::format("Found {} tests in file: {}",
+                                 registry.numTestsInFile(file), file)
+                << ::std::endl;
+    for (const auto &test : registry.testsInFile(file)) {
+      ::std::cout << ::std::format("Running test: {} ({}, line {})", test.name,
+                                   ::tkoz::srtest::testCategoryString(test.cat),
+                                   test.line)
+                  << ::std::endl;
+      try {
+        test.run();
+      } catch (const ::std::exception &exc) {
+        ::std::cout << exc.what() << ::std::endl;
+        return 1;
+      } catch (...) {
+        ::std::cout << "Test failure: unknown exception type" << ::std::endl;
+        return 1;
+      }
     }
   }
 
