@@ -4,7 +4,7 @@ target_compile_features(tkoz_options_common INTERFACE cxx_std_23)
 # Always enable all warnings, if they were intended then they can be suppressed
 # For release builds, we should also use -Werror
 target_compile_options(tkoz_options_common INTERFACE
-    -Wall -Wextra -Wpedantic)
+    -Wall -Wextra -Wpedantic -frtti)
 
 # Note: address/undefined sanitizers may cause issues for intentional low level code
 
