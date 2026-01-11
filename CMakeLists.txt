@@ -35,3 +35,4 @@ include(${CMAKE_SOURCE_DIR}/docs/clang-doc.cmake)
 
 # Project subdirectories
 add_subdirectory(srtest)
+add_subdirectory(ff)

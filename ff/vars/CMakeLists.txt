@@ -1,0 +1,5 @@
+add_library(tkoz-ff-vars)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+target_sources(tkoz-ff-vars PRIVATE ${SOURCES})
+target_include_directories(tkoz-ff-vars PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc")
+target_link_libraries(tkoz-ff-vars PRIVATE tkoz_options_common tkoz-srtest)
