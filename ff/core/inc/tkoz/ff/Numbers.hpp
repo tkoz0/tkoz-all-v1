@@ -36,19 +36,26 @@ template <> constexpr float cNumPi<float> = 3.1415927f;
 template <> constexpr double cNumPi<double> = 3.141592653589793;
 
 // === Rational multiples of pi ===
-// this could get out of control but there are 8 values for now
+// this could get out of control but there are 16 values for now
 
 /// Multiples of pi (pi*n/d) hardcoded to closest IEEE values
-/// Currently only for 1/1, 1/2, 1/3, 2/3, 1/4, 3/4, 1/6, 5/6
 template <typename T, int n, int d> static constexpr T cNumPiMult;
 // pi * 1/1 = 3.1415926535 8979323846 2643383279 5028841971 6939937510 ...
 // bits (IEEE-754): float = +0x1.921fb6p+1f, double = +0x1.921fb54442d18p+1
 template <> constexpr float cNumPiMult<float, 1, 1> = 3.1415927f;
 template <> constexpr double cNumPiMult<double, 1, 1> = 3.141592653589793;
+// pi * 2/1 = 6.2831853071 7958647692 5286766559 0057683943 3879875021 ...
+// bits (IEEE-754): float = +0x1.921fb6p+2f, double = +0x1.921fb54442d18p+2
+template <> constexpr float cNumPiMult<float, 2, 1> = 6.2831853f;
+template <> constexpr double cNumPiMult<double, 2, 1> = 6.283185307179586;
 // pi * 1/2 = 1.5707963267 9489661923 1321691639 7514420985 8469968755 ...
 // bits (IEEE-754): float = +0x1.921fb6p+0f, double = +0x1.921fb54442d18p+0
 template <> constexpr float cNumPiMult<float, 1, 2> = 1.57079633f;
 template <> constexpr double cNumPiMult<double, 1, 2> = 1.5707963267948966;
+// pi * 3/2 = 4.7123889803 8468985769 3965074919 2543262957 5409906265 ...
+// bits (IEEE-754): float = +0x1.2d97c8p+2f, double = +0x1.2d97c7f3321d2p+2
+template <> constexpr float cNumPiMult<float, 3, 2> = 4.712389f;
+template <> constexpr double cNumPiMult<double, 3, 2> = 4.71238898038469;
 // pi * 1/3 = 1.0471975511 9659774615 4214461093 1676280657 2313312503 ...
 // bits (IEEE-754): float = +0x1.0c1524p+0f, double = +0x1.0c152382d7366p+0
 template <> constexpr float cNumPiMult<float, 1, 3> = 1.0471976f;
@@ -57,6 +64,14 @@ template <> constexpr double cNumPiMult<double, 1, 3> = 1.04719755119659775;
 // bits (IEEE-754): float = +0x1.0c1524p+1f, double = +0x1.0c152382d7366p+1
 template <> constexpr float cNumPiMult<float, 2, 3> = 2.0943951f;
 template <> constexpr double cNumPiMult<double, 2, 3> = 2.0943951023931955;
+// pi * 4/3 = 4.1887902047 8639098461 6857844372 6705122628 9253250014 ...
+// bits (IEEE-754): float = +0x1.0c1524p+2f, double = +0x1.0c152382d7366p+2
+template <> constexpr float cNumPiMult<float, 4, 3> = 4.1887902f;
+template <> constexpr double cNumPiMult<double, 4, 3> = 4.188790204786391;
+// pi * 5/3 = 5.2359877559 8298873077 1072305465 8381403286 1566562517 ...
+// bits (IEEE-754): float = +0x1.4f1a6cp+2f, double = +0x1.4f1a6c638d03fp+2
+template <> constexpr float cNumPiMult<float, 5, 3> = 5.2359878f;
+template <> constexpr double cNumPiMult<double, 5, 3> = 5.235987755982989;
 // pi * 1/4 = 0.7853981633 9744830961 5660845819 8757210492 9234984377 ...
 // bits (IEEE-754): float = +0x1.921fb6p-1f, double = +0x1.921fb54442d18p-1
 template <> constexpr float cNumPiMult<float, 1, 4> = 0.7853982f;
@@ -65,6 +80,14 @@ template <> constexpr double cNumPiMult<double, 1, 4> = 0.7853981633974483;
 // bits (IEEE-754): float = +0x1.2d97c8p+1f, double = +0x1.2d97c7f3321d2p+1
 template <> constexpr float cNumPiMult<float, 3, 4> = 2.3561945f;
 template <> constexpr double cNumPiMult<double, 3, 4> = 2.356194490192345;
+// pi * 5/4 = 3.9269908169 8724154807 8304229099 3786052464 6174921888 ...
+// bits (IEEE-754): float = +0x1.f6a7a2p+1f, double = +0x1.f6a7a2955385ep+1
+template <> constexpr float cNumPiMult<float, 5, 4> = 3.9269908f;
+template <> constexpr double cNumPiMult<double, 5, 4> = 3.9269908169872415;
+// pi * 7/4 = 5.4977871437 8213816730 9625920739 1300473450 4644890643 ...
+// bits (IEEE-754): float = +0x1.5fdbbep+2f, double = +0x1.5fdbbe9bba775p+2
+template <> constexpr float cNumPiMult<float, 7, 4> = 5.497787f;
+template <> constexpr double cNumPiMult<double, 7, 4> = 5.497787143782138;
 // pi * 1/6 = 0.5235987755 9829887307 7107230546 5838140328 6156656251 ...
 // bits (IEEE-754): float = +0x1.0c1524p-1f, double = +0x1.0c152382d7366p-1
 template <> constexpr float cNumPiMult<float, 1, 6> = 0.5235988f;
@@ -73,6 +96,84 @@ template <> constexpr double cNumPiMult<double, 1, 6> = 0.523598775598298873;
 // bits (IEEE-754): float = +0x1.4f1a6cp+1f, double = +0x1.4f1a6c638d03fp+1
 template <> constexpr float cNumPiMult<float, 5, 6> = 2.6179939f;
 template <> constexpr double cNumPiMult<double, 5, 6> = 2.6179938779914944;
+// pi * 7/6 = 3.6651914291 8809211153 9750613826 0866982300 3096593762 ...
+// bits (IEEE-754): float = +0x1.d524fep+1f, double = +0x1.d524fe24f89f2p+1
+template <> constexpr float cNumPiMult<float, 7, 6> = 3.6651914f;
+template <> constexpr double cNumPiMult<double, 7, 6> = 3.6651914291880921;
+// pi * 11/6 = 5.7595865315 8128760384 8179536012 4219543614 7723218769 ...
+// bits (IEEE-754): float = +0x1.709d10p+2f, double = +0x1.709d10d3e7eacp+2
+template <> constexpr float cNumPiMult<float, 11, 6> = 5.7595865f;
+template <> constexpr double cNumPiMult<double, 11, 6> = 5.759586531581288;
+
+// === Rational multiples of inverse pi ===
+// reciprocals of the pi multiples
+
+/// Multiples of 1/pi (n/(d*pi)) hardcoded to closest IEEE values
+template <typename T, int n, int d> static constexpr T cNumInvPiMult;
+// 1/(1*pi) = 0.3183098861 8379067153 7767526745 0287240689 1929148091 ...
+// bits (IEEE-754): float = +0x1.45f306p-2f, double = +0x1.45f306dc9c883p-2
+template <> constexpr float cNumInvPiMult<float, 1, 1> = 0.318309886f;
+template <> constexpr double cNumInvPiMult<double, 1, 1> = 0.3183098861837907;
+// 1/(2*pi) = 0.1591549430 9189533576 8883763372 5143620344 5964574045 ...
+// bits (IEEE-754): float = +0x1.45f306p-3f, double = +0x1.45f306dc9c883p-3
+template <> constexpr float cNumInvPiMult<float, 1, 2> = 0.15915494f;
+template <> constexpr double cNumInvPiMult<double, 1, 2> = 0.15915494309189534;
+// 2/(1*pi) = 0.6366197723 6758134307 5535053490 0574481378 3858296182 ...
+// bits (IEEE-754): float = +0x1.45f306p-1f, double = +0x1.45f306dc9c883p-1
+template <> constexpr float cNumInvPiMult<float, 2, 1> = 0.63661977f;
+template <> constexpr double cNumInvPiMult<double, 2, 1> = 0.63661977236758134;
+// 2/(3*pi) = 0.2122065907 8919378102 5178351163 3524827126 1286098727 ...
+// bits (IEEE-754): float = +0x1.b2995ep-3f, double = +0x1.b2995e7b7b604p-3
+template <> constexpr float cNumInvPiMult<float, 2, 3> = 0.21220659f;
+template <> constexpr double cNumInvPiMult<double, 2, 3> = 0.212206590789193781;
+// 3/(1*pi) = 0.9549296585 5137201461 3302580235 0861722067 5787444273 ...
+// bits (IEEE-754): float = +0x1.e8ec8ap-1f, double = +0x1.e8ec8a4aeacc4p-1
+template <> constexpr float cNumInvPiMult<float, 3, 1> = 0.95492966f;
+template <> constexpr double cNumInvPiMult<double, 3, 1> = 0.954929658551372;
+// 3/(2*pi) = 0.4774648292 7568600730 6651290117 5430861033 7893722136 ...
+// bits (IEEE-754): float = +0x1.e8ec8ap-2f, double = +0x1.e8ec8a4aeacc4p-2
+template <> constexpr float cNumInvPiMult<float, 3, 2> = 0.47746483f;
+template <> constexpr double cNumInvPiMult<double, 3, 2> = 0.477464829275686;
+// 3/(4*pi) = 0.2387324146 3784300365 3325645058 7715430516 8946861068 ...
+// bits (IEEE-754): float = +0x1.e8ec8ap-3f, double = +0x1.e8ec8a4aeacc4p-3
+template <> constexpr float cNumInvPiMult<float, 3, 4> = 0.23873241f;
+template <> constexpr double cNumInvPiMult<double, 3, 4> = 0.238732414637843;
+// 3/(5*pi) = 0.1909859317 1027440292 2660516047 0172344413 5157488854 ...
+// bits (IEEE-754): float = +0x1.8723a2p-3f, double = +0x1.8723a1d588a36p-3
+template <> constexpr float cNumInvPiMult<float, 3, 5> = 0.19098593f;
+template <> constexpr double cNumInvPiMult<double, 3, 5> = 0.1909859317102744;
+// 4/(1*pi) = 1.2732395447 3516268615 1070106980 1148962756 7716592365 ...
+// bits (IEEE-754): float = +0x1.45f306p+0f, double = +0x1.45f306dc9c883p+0
+template <> constexpr float cNumInvPiMult<float, 4, 1> = 1.2732395f;
+template <> constexpr double cNumInvPiMult<double, 4, 1> = 1.2732395447351627;
+// 4/(3*pi) = 0.4244131815 7838756205 0356702326 7049654252 2572197455 ...
+// bits (IEEE-754): float = +0x1.b2995ep-2f, double = +0x1.b2995e7b7b604p-2
+template <> constexpr float cNumInvPiMult<float, 4, 3> = 0.42441318f;
+template <> constexpr double cNumInvPiMult<double, 4, 3> = 0.424413181578387562;
+// 4/(5*pi) = 0.2546479089 4703253723 0214021396 0229792551 3543318473 ...
+// bits (IEEE-754): float = +0x1.04c26cp-2f, double = +0x1.04c26be3b06cfp-2
+template <> constexpr float cNumInvPiMult<float, 4, 5> = 0.2546479f;
+template <> constexpr double cNumInvPiMult<double, 4, 5> = 0.25464790894703254;
+// 4/(7*pi) = 0.1818913635 3359466945 0152872425 7306994679 5388084623 ...
+// bits (IEEE-754): float = +0x1.748376p-3f, double = +0x1.7483758e69c03p-3
+template <> constexpr float cNumInvPiMult<float, 4, 7> = 0.18189136f;
+template <> constexpr double cNumInvPiMult<double, 4, 7> = 0.18189136353359467;
+// 6/(1*pi) = 1.9098593171 0274402922 6605160470 1723444135 1574888547 ...
+// bits (IEEE-754): float = +0x1.e8ec8ap+0f, double = +0x1.e8ec8a4aeacc4p+0
+template <> constexpr float cNumInvPiMult<float, 6, 1> = 1.9098593f;
+template <> constexpr double cNumInvPiMult<double, 6, 1> = 1.909859317102744;
+// 6/(5*pi) = 0.3819718634 2054880584 5321032094 0344688827 0314977709 ...
+// bits (IEEE-754): float = +0x1.8723a2p-2f, double = +0x1.8723a1d588a36p-2
+template <> constexpr float cNumInvPiMult<float, 6, 5> = 0.38197186f;
+template <> constexpr double cNumInvPiMult<double, 6, 5> = 0.3819718634205488;
+// 6/(7*pi) = 0.2728370453 0039200417 5229308638 5960492019 3082126935 ...
+// bits (IEEE-754): float = +0x1.176298p-2f, double = +0x1.1762982acf502p-2
+template <> constexpr float cNumInvPiMult<float, 6, 7> = 0.27283705f;
+template <> constexpr double cNumInvPiMult<double, 6, 7> = 0.272837045300392;
+// 6/(11*pi) = 0.1736235742 8206763902 0600469133 6520313103 1961353504 ...
+// bits (IEEE-754): float = +0x1.6394c2p-3f, double = +0x1.6394c1aad94ecp-3
+template <> constexpr float cNumInvPiMult<float, 6, 11> = 0.17362357f;
+template <> constexpr double cNumInvPiMult<double, 6, 11> = 0.17362357428206764;
 
 // === Square roots of integers ===
 // only below 25 for now
