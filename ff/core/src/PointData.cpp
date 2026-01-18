@@ -20,24 +20,26 @@ namespace tkoz::ff {
 namespace {
 
 template <std::size_t N>
-[[nodiscard]] inline consteval bool staticAssertPointSize() noexcept {
+[[nodiscard]] inline consteval auto staticAssertPointSize() noexcept -> bool {
   return sizeof(PointData<N, float>) == N * sizeof(float) &&
          sizeof(PointData<N, double>) == N * sizeof(double);
 }
 
 template <std::size_t N>
-[[nodiscard]] inline consteval bool staticAssertPointAlign() noexcept {
+[[nodiscard]] inline consteval auto staticAssertPointAlign() noexcept -> bool {
   return alignof(PointData<N, float>) == alignof(float) &&
          alignof(PointData<N, double>) == alignof(double);
 }
 
 template <std::size_t... Ns>
-[[nodiscard]] inline consteval bool staticAssertPointAllSizes() noexcept {
+[[nodiscard]] inline consteval auto staticAssertPointAllSizes() noexcept
+    -> bool {
   return (staticAssertPointSize<Ns>() && ...);
 }
 
 template <std::size_t... Ns>
-[[nodiscard]] inline consteval bool staticAssertPointAllAligns() noexcept {
+[[nodiscard]] inline consteval auto staticAssertPointAllAligns() noexcept
+    -> bool {
   return (staticAssertPointAlign<Ns>() && ...);
 }
 
@@ -134,16 +136,16 @@ TEST_CREATE_FAST(access) {
     TEST_REQUIRE_EQ(static_cast<void *>(a.dataPtr()), static_cast<void *>(&a));
     TEST_REQUIRE_EQ(static_cast<void *>(b.dataPtr()), static_cast<void *>(&b));
     // And the const versions
-    const auto &ac = a;
-    const auto &bc = b;
-    TEST_REQUIRE_EQ(static_cast<const void *>(&ac.data()),
-                    static_cast<const void *>(&ac));
-    TEST_REQUIRE_EQ(static_cast<const void *>(&bc.data()),
-                    static_cast<const void *>(&bc));
-    TEST_REQUIRE_EQ(static_cast<const void *>(ac.dataPtr()),
-                    static_cast<const void *>(&ac));
-    TEST_REQUIRE_EQ(static_cast<const void *>(bc.dataPtr()),
-                    static_cast<const void *>(&bc));
+    auto const &ac = a;
+    auto const &bc = b;
+    TEST_REQUIRE_EQ(static_cast<void const *>(&ac.data()),
+                    static_cast<void const *>(&ac));
+    TEST_REQUIRE_EQ(static_cast<void const *>(&bc.data()),
+                    static_cast<void const *>(&bc));
+    TEST_REQUIRE_EQ(static_cast<void const *>(ac.dataPtr()),
+                    static_cast<void const *>(&ac));
+    TEST_REQUIRE_EQ(static_cast<void const *>(bc.dataPtr()),
+                    static_cast<void const *>(&bc));
   }
 
   // Element access (operator[])
@@ -173,8 +175,8 @@ TEST_CREATE_FAST(access) {
     TEST_REQUIRE_EQ(b[2], -1.5);
     TEST_REQUIRE_EQ(b[6], 15.5);
     // And const versions
-    const auto &ac = a;
-    const auto &bc = b;
+    auto const &ac = a;
+    auto const &bc = b;
     TEST_REQUIRE_EQ(ac[0], -1.1f);
     TEST_REQUIRE_EQ(ac[1], 1.5f);
     TEST_REQUIRE_EQ(ac[2], -3.3f);
@@ -207,8 +209,8 @@ TEST_CREATE_FAST(access) {
     TEST_REQUIRE_EQ(a.at(2), 1.07);
     TEST_REQUIRE_EQ(b.at(0), 1.09f);
     // And const versions
-    const auto &ac = a;
-    const auto &bc = b;
+    auto const &ac = a;
+    auto const &bc = b;
     TEST_REQUIRE_EQ(ac.at(0), 1.01);
     TEST_REQUIRE_EQ(ac.at(1), 1.03);
     TEST_REQUIRE_EQ(ac.at(2), 1.07);
@@ -234,8 +236,8 @@ TEST_CREATE_FAST(access) {
     TEST_REQUIRE_EQ(a.at<0>(), 3.1415);
     TEST_REQUIRE_EQ(b.at<2>(), 3.1415f);
     // And const versions
-    const auto &ac = a;
-    const auto &bc = b;
+    auto const &ac = a;
+    auto const &bc = b;
     TEST_REQUIRE_EQ(ac.at<0>(), 3.1415);
     TEST_REQUIRE_EQ(ac.at<1>(), 2.718);
     TEST_REQUIRE_EQ(bc.at<0>(), 299792458.0f);
@@ -282,15 +284,15 @@ TEST_CREATE_FAST(iterate) {
         a.data(), (std::array<float, 6>{0.0f, 1.0f, 4.0f, 9.0f, 16.0f, 25.0f}));
 
     std::vector<double> bv;
-    for (const double &d : b) {
+    for (double const &d : b) {
       bv.push_back(d);
     }
     TEST_REQUIRE_EQ(
         bv, (std::vector<double>{1.0, 0.5, 0.33333333333333333333, 0.25, 0.2}));
 
     // And with const references
-    const auto &ac = a;
-    const auto &bc = b;
+    auto const &ac = a;
+    auto const &bc = b;
 
     TEST_REQUIRE_EQ(*ac.begin(), 0.0f);
     TEST_REQUIRE_EQ(ac.begin() + 6, ac.end());
@@ -337,8 +339,8 @@ TEST_CREATE_FAST(iterate) {
     TEST_REQUIRE_EQ(bv, (std::vector<double>{2.0, 1.5, 1.0}));
 
     // And with const references
-    const auto &ac = a;
-    const auto &bc = b;
+    auto const &ac = a;
+    auto const &bc = b;
 
     TEST_REQUIRE_EQ(*ac.rbegin(), 17.0f);
     TEST_REQUIRE_EQ(*bc.crbegin(), 2.0);

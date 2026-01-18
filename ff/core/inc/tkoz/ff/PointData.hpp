@@ -23,6 +23,7 @@ public:
   using value_type = NumberT;
   using iterator = decltype(mData)::iterator;
   using const_iterator = decltype(mData)::const_iterator;
+  using Data = std::array<NumberT, cDimsT>;
 
   /// Number of dimensions
   static constexpr std::size_t cDimensions = cDimsT;
@@ -35,7 +36,7 @@ public:
 
   /// Create a zero initialized \a PointData.
   /// \return The zero point/vector (origin).
-  [[nodiscard]] inline static PointData zero() noexcept {
+  [[nodiscard]] inline static auto zero() noexcept -> PointData {
     PointData result;
     for (std::size_t i = 0; i < cDimensions; ++i) {
       result.mData[i] = static_cast<NumberT>(0.0);
@@ -59,7 +60,7 @@ public:
   template <typename InNumberT>
     requires(std::is_convertible_v<InNumberT, NumberT>)
   [[nodiscard]] inline constexpr explicit PointData(
-      const std::array<InNumberT, cDimensions> &data) noexcept {
+      std::array<InNumberT, cDimensions> const &data) noexcept {
     for (std::size_t i = 0; i < cDimensions; ++i) {
       mData[i] = static_cast<NumberT>(data[i]);
     }
@@ -83,7 +84,7 @@ public:
   template <typename InNumberT>
     requires(std::is_convertible_v<InNumberT, NumberT>)
   [[nodiscard]] inline constexpr explicit PointData(
-      const InNumberT *data) noexcept {
+      InNumberT const *data) noexcept {
     for (std::size_t i = 0; i < cDimensions; ++i) {
       mData[i] = static_cast<NumberT>(data[i]);
     }
@@ -99,69 +100,73 @@ public:
 
   // Default the usual copy and move.
 
-  [[nodiscard]] inline constexpr PointData(const PointData &other) noexcept =
+  [[nodiscard]] inline constexpr PointData(PointData const &other) noexcept =
       default;
   [[nodiscard]] inline constexpr PointData(PointData &&other) noexcept =
       default;
   inline constexpr PointData &
-  operator=(const PointData &other) noexcept = default;
+  operator=(PointData const &other) noexcept = default;
   inline constexpr PointData &operator=(PointData &&other) noexcept = default;
 
   // === Data access ===
 
   /// Access the internal array (const).
-  [[nodiscard]] inline constexpr const std::array<NumberT, cDimsT> &
-  data() const noexcept {
+  [[nodiscard]] inline constexpr auto data() const noexcept
+      -> std::array<NumberT, cDimsT> const & {
     return mData;
   }
 
   /// Access the internal array (non const).
-  [[nodiscard]] inline constexpr std::array<NumberT, cDimsT> &data() noexcept {
+  [[nodiscard]] inline constexpr auto data() noexcept
+      -> std::array<NumberT, cDimsT> & {
     return mData;
   }
 
   /// Access the internal array by pointer (const).
-  [[nodiscard]] inline constexpr const NumberT *dataPtr() const noexcept {
+  [[nodiscard]] inline constexpr auto dataPtr() const noexcept
+      -> NumberT const * {
     return mData.data();
   }
 
   /// Access the internal array by pointer (non const).
-  [[nodiscard]] inline constexpr NumberT *dataPtr() noexcept {
+  [[nodiscard]] inline constexpr auto dataPtr() noexcept -> NumberT * {
     return mData.data();
   }
 
   /// Access component (const, no bounds check).
-  [[nodiscard]] inline constexpr const NumberT &
-  operator[](std::size_t i) const noexcept {
+  [[nodiscard]] inline constexpr auto operator[](std::size_t i) const noexcept
+      -> NumberT const & {
     return mData[i];
   }
 
   /// Access component (non const, no bounds check).
-  [[nodiscard]] inline constexpr NumberT &operator[](std::size_t i) noexcept {
+  [[nodiscard]] inline constexpr auto operator[](std::size_t i) noexcept
+      -> NumberT & {
     return mData[i];
   }
 
   /// Access component (const, with bounds check).
-  [[nodiscard]] inline constexpr const NumberT &at(std::size_t i) const {
+  [[nodiscard]] inline constexpr auto at(std::size_t i) const
+      -> NumberT const & {
     return mData.at(i);
   }
 
   /// Access component (non const, with bounds check).
-  [[nodiscard]] inline constexpr NumberT &at(std::size_t i) {
+  [[nodiscard]] inline constexpr auto at(std::size_t i) -> NumberT & {
     return mData.at(i);
   }
 
   /// Access component with compile time index (const).
   template <std::size_t cIndexT>
     requires(cIndexT < cDimsT)
-  [[nodiscard]] inline constexpr const NumberT &at() const noexcept {
+  [[nodiscard]] inline constexpr auto at() const noexcept -> NumberT const & {
     return mData[cIndexT];
   }
 
   /// Access component with compile time index (non const).
   template <std::size_t cIndexT>
     requires(cIndexT < cDimsT)
-  [[nodiscard]] inline constexpr NumberT &at() noexcept {
+  [[nodiscard]] inline constexpr auto at() noexcept -> NumberT & {
     return mData[cIndexT];
   }
 
@@ -214,8 +219,9 @@ private:
   // another Point type, possibly of different type and dimension.
   template <std::floating_point ToNumberT, std::size_t... cIndexesT>
     requires((cIndexesT < cDimensions) && ...)
-  [[nodiscard]] inline constexpr PointData<sizeof...(cIndexesT), ToNumberT>
-  makePointFromIndexes(std::index_sequence<cIndexesT...>) const noexcept {
+  [[nodiscard]] inline constexpr auto makePointFromIndexes(
+      std::index_sequence<cIndexesT...> /*unused*/) const noexcept
+      -> PointData<sizeof...(cIndexesT), ToNumberT> {
     return PointData<sizeof...(cIndexesT), ToNumberT>(
         static_cast<ToNumberT>(mData[cIndexesT])...);
   }
