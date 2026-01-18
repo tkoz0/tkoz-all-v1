@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 namespace tkoz::ff {
 
@@ -39,6 +40,15 @@ namespace tkoz::ff {
 ///
 /// TODO should this library be compiled separately for 32 and 64 bit?
 
+/// Is T a valid floating point type?
+/// For the fractal renderer, we only use float and double for now, avoiding
+/// the platform specific or potentially concerning long double.
+/// This also allows extension to support other types later such as quad
+/// precision without specializing \a std::floating_point.
+/// \tparam T A floating point type
+template <typename T>
+concept cFloatOrDouble = std::is_same_v<T, float> || std::is_same_v<T, double>;
+
 /// Real number type for 32 bit mode
 using NumberValue32 = float;
 
@@ -74,5 +84,8 @@ using HistogramValue = std::uint64_t;
 #endif
 
 } // namespace detail
+
+// using NumberValue = detail::NumberValue;
+// using HistogramValue = detail::HistogramValue;
 
 } // namespace tkoz::ff
