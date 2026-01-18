@@ -47,7 +47,7 @@ namespace tkoz::ff {
 /// precision without specializing \a std::floating_point.
 /// \tparam T A floating point type
 template <typename T>
-concept cFloatOrDouble = std::is_same_v<T, float> || std::is_same_v<T, double>;
+concept cFpType = std::is_same_v<T, float> || std::is_same_v<T, double>;
 
 /// Real number type for 32 bit mode
 using NumberValue32 = float;

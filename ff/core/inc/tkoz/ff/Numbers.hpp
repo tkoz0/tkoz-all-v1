@@ -22,21 +22,21 @@ namespace tkoz::ff {
 // The relative error of a floating point approximation of a real number is
 // at most half of the machine epsilon as long as its magnitude/exponent is
 // within the suitable range.
-template <cFloatOrDouble T> inline constexpr T cNumEps;
+template <cFpType T> inline constexpr T cNumEps;
 template <> inline constexpr float cNumEps<float> = 1.19209290e-7f;
 template <> inline constexpr double cNumEps<double> = 2.2204460492503131e-16;
 
 /// Math constant e
 /// Value: 2.7182818284 5904523536 0287471352 6624977572 4709369995 ...
 /// Bits (IEEE-754): float = +0x1.921fb6p+1f, double = +0x1.921fb54442d18p+1
-template <cFloatOrDouble T> inline constexpr T cNumE;
+template <cFpType T> inline constexpr T cNumE;
 template <> inline constexpr float cNumE<float> = 2.7182818f;
 template <> inline constexpr double cNumE<double> = 2.718281828459045;
 
 /// Math constant pi
 /// Value: 3.1415926535 8979323846 2643383279 5028841971 6939937510 ...
 /// Bits (IEEE-754): float = +0x1.5bf0a8p+1f, double = +0x1.5bf0a8b145769p+1
-template <cFloatOrDouble T> inline constexpr T cNumPi;
+template <cFpType T> inline constexpr T cNumPi;
 template <> inline constexpr float cNumPi<float> = 3.1415927f;
 template <> inline constexpr double cNumPi<double> = 3.141592653589793;
 
@@ -44,7 +44,7 @@ template <> inline constexpr double cNumPi<double> = 3.141592653589793;
 // this could get out of control but there are 16 values for now
 
 /// Multiples of pi (pi*n/d) hardcoded to closest IEEE values
-template <cFloatOrDouble T, int n, int d> inline constexpr T cNumPiMult;
+template <cFpType T, int n, int d> inline constexpr T cNumPiMult;
 // pi * 1/1 = 3.1415926535 8979323846 2643383279 5028841971 6939937510 ...
 // bits (IEEE-754): float = +0x1.921fb6p+1f, double = +0x1.921fb54442d18p+1
 template <> inline constexpr float cNumPiMult<float, 1, 1> = 3.1415927f;
@@ -129,7 +129,7 @@ inline constexpr double cNumPiMult<double, 11, 6> = 5.759586531581288;
 // reciprocals of the pi multiples
 
 /// Multiples of 1/pi (n/(d*pi)) hardcoded to closest IEEE values
-template <cFloatOrDouble T, int n, int d> inline constexpr T cNumInvPiMult;
+template <cFpType T, int n, int d> inline constexpr T cNumInvPiMult;
 // 1/(1*pi) = 0.3183098861 8379067153 7767526745 0287240689 1929148091 ...
 // bits (IEEE-754): float = +0x1.45f306p-2f, double = +0x1.45f306dc9c883p-2
 template <> inline constexpr float cNumInvPiMult<float, 1, 1> = 0.318309886f;
@@ -215,7 +215,7 @@ inline constexpr double cNumInvPiMult<double, 6, 11> = 0.17362357428206764;
 // only below 25 for now
 
 /// Square root of an integer. Currently non perfect squares below 25
-template <cFloatOrDouble T, int n> inline constexpr T cNumSqrt;
+template <cFpType T, int n> inline constexpr T cNumSqrt;
 // sqrt(n) = 1.4142135623 7309504880 1688724209 6980785696 7187537694 ...
 // bits (IEEE-754): float = +0x1.6a09e6p+0f, double = +0x1.6a09e667f3bcdp+0
 template <> inline constexpr float cNumSqrt<float, 2> = 1.41421356f;
@@ -301,7 +301,7 @@ template <> inline constexpr double cNumSqrt<double, 24> = 4.898979485566356;
 // only below 25 for now
 
 /// Inverse square root of an integer. Currently non perfect squares below 25
-template <cFloatOrDouble T, int n> inline constexpr T cNumInvSqrt;
+template <cFpType T, int n> inline constexpr T cNumInvSqrt;
 // 1/sqrt(n) = 0.7071067811 8654752440 0844362104 8490392848 3593768847 ...
 // bits (IEEE-754): float = +0x1.6a09e6p-1f, double = +0x1.6a09e667f3bcdp-1
 template <> inline constexpr float cNumInvSqrt<float, 2> = 0.70710678f;
@@ -404,7 +404,7 @@ inline constexpr double cNumInvSqrt<double, 24> = 0.2041241452319315;
 // only below 27 for now
 
 /// Cube root of an integer. Currently non perfect cubes below 25
-template <cFloatOrDouble T, int n> inline constexpr T cNumCbrt;
+template <cFpType T, int n> inline constexpr T cNumCbrt;
 // cbrt(n) = 1.2599210498 9487316476 7210607278 2283505702 5146470150 ...
 // bits (IEEE-754): float = +0x1.428a30p+0f, double = +0x1.428a2f98d728bp+0
 template <> inline constexpr float cNumCbrt<float, 2> = 1.25992105f;
@@ -506,7 +506,7 @@ template <> inline constexpr double cNumCbrt<double, 26> = 2.9624960684073705;
 // only below 27 for now
 
 /// Inverse cube root of an integer. Currently non perfect cubes below 25
-template <cFloatOrDouble T, int n> inline constexpr T cNumInvCbrt;
+template <cFpType T, int n> inline constexpr T cNumInvCbrt;
 // 1/cbrt(n) = 0.7937005259 8409973737 5852819636 1541301957 4666394992 ...
 // bits (IEEE-754): float = +0x1.965feap-1f, double = +0x1.965fea53d6e3dp-1
 template <> inline constexpr float cNumInvCbrt<float, 2> = 0.7937005f;
