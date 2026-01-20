@@ -2,7 +2,7 @@
 
 #include <tkoz/ff/Types.hpp>
 
-namespace tkoz::ff {
+namespace tkoz::ff::fpMath {
 
 /// Stores hard coded numerical constants which can be substituted in various
 /// places at compile time. This file really should not get too big...
@@ -623,4 +623,4 @@ template <> inline constexpr float cNumInvCbrt<float, 26> = 0.3375532f;
 template <>
 inline constexpr double cNumInvCbrt<double, 26> = 0.33755319058958183;
 
-} // namespace tkoz::ff
+} // namespace tkoz::ff::fpMath

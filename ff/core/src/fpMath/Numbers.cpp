@@ -22,7 +22,7 @@ static_assert(DBL_MANT_DIG == 53);
 static_assert(FLT_EPSILON == 1.19209290e-7f);
 static_assert(DBL_EPSILON == 2.2204460492503131e-16);
 
-namespace tkoz::ff {
+namespace tkoz::ff::fpMath {
 
 // Test the machine epsilon
 static_assert(cNumEps<float> == std::numeric_limits<float>::epsilon());
@@ -188,6 +188,6 @@ static_assert(cNumPi<double> != 3.1415926535897934);
 // - log10(e)
 // other ...
 
-} // namespace tkoz::ff
+} // namespace tkoz::ff::fpMath
 
 #endif // TEST
