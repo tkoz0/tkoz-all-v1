@@ -125,7 +125,7 @@ if 0: # pi and e
 outLines = []
 
 if 0: # pi fractions (cNumPiMult)
-    fracs = [(1,1),(1,2),(1,3),(2,3),(1,4),(3,4),(1,6),(5,6)]
+    fracs = [(1,1),(2,1),(1,2),(3,2),(1,3),(2,3),(4,3),(5,3),(1,4),(3,4),(5,4),(7,4),(1,6),(5,6),(7,6),(11,6)]
     #fracs = [(1,1)]
     pi = constantDec['pi']
     outLines.append(f'template <typename T, int n, int d> static constexpr T cNumPiMult;')
@@ -135,6 +135,19 @@ if 0: # pi fractions (cNumPiMult)
         outLines.append(f'// bits (IEEE-754): float = {fltHex(valueDec)}, double = {dblHex(valueDec)}')
         outLines.append(f'template <> constexpr float cNumPiMult<float,{n},{d}> = {shortestFltStr(valueDec)}f;')
         outLines.append(f'template <> constexpr double cNumPiMult<double,{n},{d}> = {shortestDblStr(valueDec)};')
+    print()
+
+if 0: # inverse pi fractions (cNumPiMult)
+    fracs = [(1,1),(2,1),(1,2),(3,2),(1,3),(2,3),(4,3),(5,3),(1,4),(3,4),(5,4),(7,4),(1,6),(5,6),(7,6),(11,6)]
+    #fracs = [(1,1)]
+    pi = constantDec['pi']
+    outLines.append(f'template <typename T, int n, int d> static constexpr T cNumInvPiMult;')
+    for n,d in fracs:
+        valueDec = d/(n*pi)
+        outLines.append(f'// {d}/({n}*pi) = {niceDecStr(valueDec)}')
+        outLines.append(f'// bits (IEEE-754): float = {fltHex(valueDec)}, double = {dblHex(valueDec)}')
+        outLines.append(f'template <> constexpr float cNumInvPiMult<float,{d},{n}> = {shortestFltStr(valueDec)}f;')
+        outLines.append(f'template <> constexpr double cNumInvPiMult<double,{d},{n}> = {shortestDblStr(valueDec)};')
     print()
 
 def calcDecSqrt(n:int) -> Decimal:
