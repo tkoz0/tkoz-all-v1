@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <typeinfo>
 #include <utility>
 #include <vector>
@@ -27,8 +28,8 @@ using TestFunction = void (*)();
 enum class TestCategory : std::uint8_t { FAST, SLOW };
 
 /// Convert a test category to a string
-[[maybe_unused]] static inline std::string
-testCategoryString(TestCategory cat) noexcept {
+[[maybe_unused]] static inline auto
+testCategoryString(TestCategory cat) noexcept -> std::string {
   switch (cat) {
   case TestCategory::FAST:
     return "FAST";
@@ -87,14 +88,14 @@ public:
   TestRegistry &operator=(TestRegistry &&) = delete;
 
   /// \return The singleton instance keeping track of available tests.
-  [[nodiscard]] inline static TestRegistry &instance() noexcept {
+  [[nodiscard]] inline static auto instance() noexcept -> TestRegistry & {
     static TestRegistry testRegistry;
     return testRegistry;
   }
 
   /// \return All tests contained in the registry.
-  [[nodiscard]] inline const std::vector<TestInstance> &
-  allTests() const noexcept {
+  [[nodiscard]] inline auto allTests() const noexcept
+      -> std::vector<TestInstance> const & {
     return mAllTests;
   }
 
@@ -107,8 +108,8 @@ public:
 
   /// \return Number of tests in a file.
   /// \throw std::out_of_range If the file is not in the registry.
-  [[nodiscard]] inline std::size_t
-  numTestsInFile(const std::string &file) const noexcept {
+  [[nodiscard]] inline auto
+  numTestsInFile(const std::string &file) const noexcept -> std::size_t {
     return mPerFileTests.at(file).size();
   }
 
@@ -117,7 +118,7 @@ public:
   /// \return All tests in a file.
   /// \throw std::out_of_range If the file is not in the registry.
   [[nodiscard]] inline auto
-  testsInFileView(const std::string &file) const noexcept {
+  testsInFileView(std::string const &file) const noexcept {
     return mPerFileTests.at(file) |
            std::views::transform(
                [this](std::size_t index) -> const TestInstance & {
@@ -132,12 +133,14 @@ public:
   [[nodiscard]] inline auto end() const noexcept { return mAllTests.end(); }
 
   /// \return Number of registered tests.
-  [[nodiscard]] inline std::size_t size() const noexcept {
+  [[nodiscard]] inline auto size() const noexcept -> std::size_t {
     return mAllTests.size();
   }
 
   /// \return True if there are no registered tests.
-  [[nodiscard]] inline bool empty() const noexcept { return mAllTests.empty(); }
+  [[nodiscard]] inline auto empty() const noexcept -> bool {
+    return mAllTests.empty();
+  }
 
   /// Add a test to the registry.
   /// \param func Function object for running the test
@@ -183,8 +186,9 @@ class TestFailure : public std::runtime_error {
 
 /// Helper to ensure the std::source_location is correctly provided.
 /// By using \a consteval, we require the default usage.
-[[nodiscard]] inline consteval std::source_location sourceLocation(
-    std::source_location srcLoc = std::source_location::current()) noexcept {
+[[nodiscard]] inline consteval auto sourceLocation(
+    std::source_location srcLoc = std::source_location::current()) noexcept
+    -> std::source_location {
   return srcLoc;
 }
 
@@ -217,7 +221,7 @@ inline void requireCondition(bool condition, std::string_view falseMsg,
 /// \param type The \a std::type_info object from
 /// \a abi::__cxa_current_exception_type
 /// \return C string for the demangled name attempt.
-[[nodiscard]] inline std::string excName(const std::type_info *type) {
+[[nodiscard]] inline auto excName(std::type_info const *type) -> std::string {
   if (!type) {
     return "unknown type";
   }
@@ -247,9 +251,9 @@ inline void requireThrowExc(FuncT &&func, std::string_view expr,
                             std::source_location srcLoc = sourceLocation()) {
   try {
     std::forward<FuncT>(func)();
-  } catch (const ExcTypeT &exc) {
+  } catch (ExcTypeT const &exc) {
     return; // Successful
-  } catch (const std::exception &exc) {
+  } catch (std::exception const &exc) {
     throwFailure(
         custMsg.empty()
             ? std::format("{} threw {}, expected {}, exception message: {}",
@@ -258,7 +262,7 @@ inline void requireThrowExc(FuncT &&func, std::string_view expr,
             : custMsg,
         srcLoc);
   } catch (...) {
-    const std::type_info *const type = abi::__cxa_current_exception_type();
+    std::type_info const *const type = abi::__cxa_current_exception_type();
     throwFailure(custMsg.empty()
                      ? std::format("{} threw {}, expected {}", expr,
                                    excName(type), excName(&typeid(ExcTypeT)))
@@ -307,7 +311,7 @@ inline void requireNothrow(FuncT &&func, std::string_view expr,
                            std::source_location srcLoc = sourceLocation()) {
   try {
     std::forward<FuncT>(func)();
-  } catch (const std::exception &exc) {
+  } catch (std::exception const &exc) {
     throwFailure(
         custMsg.empty()
             ? std::format(
@@ -316,13 +320,41 @@ inline void requireNothrow(FuncT &&func, std::string_view expr,
             : custMsg,
         srcLoc);
   } catch (...) {
-    const std::type_info *const type = abi::__cxa_current_exception_type();
+    std::type_info const *const type = abi::__cxa_current_exception_type();
     throwFailure(custMsg.empty()
                      ? std::format("{} threw {}, expected no exception", expr,
                                    excName(type))
                      : custMsg,
                  srcLoc);
   }
+}
+
+/// Absolute difference between 2 floating point numbers. Note that the
+/// arguments need to be the same type and it is setup to give a useful message
+/// if they are not.
+/// \param actual The actual computed value.
+/// \param expected The expected value.
+/// \tparam T Type of the first argument.
+/// \tparam U Type of the second argument.
+/// \return The absolute difference.
+template <typename T, typename U>
+  requires std::is_same_v<T, U>
+inline T fpErrAbs(T actual, U expected) {
+  return std::abs(actual - expected);
+}
+
+/// Relative difference between 2 floating point numbers. Note that the
+/// arguments need to be the same type and it is setup to give a useful message
+/// if they are not.
+/// \param actual The actual computed value.
+/// \param expected The expected value.
+/// \tparam T Type of the first argument.
+/// \tparam U Type of the second argument.
+/// \return The relative difference.
+template <typename T, typename U>
+  requires std::is_same_v<T, U>
+inline T fpErrRel(T actual, U expected) {
+  return std::abs(actual - expected) / expected;
 }
 
 } // namespace tkoz::srtest
@@ -428,6 +460,24 @@ inline void requireNothrow(FuncT &&func, std::string_view expr,
 #define TEST_REQUIRE_THROW_ANY_MSG(expr, msg)                                  \
   ::tkoz::srtest::requireThrowAny([&]() { static_cast<void>(expr); }, "", msg);
 
+/// Require 2 floating point numbers to be nearly equal (absolute error).
+#define TEST_REQUIRE_NEAR_EQ_ABS(actual, expected, error)                      \
+  ::tkoz::srtest::requireCondition(                                            \
+      ::tkoz::srtest::fpErrAbs((actual), (expected)) < (error),                \
+      ::std::format("expected {} to be near {} with absolute error {} "        \
+                    "but found absolute error {}",                             \
+                    #actual, #expected, #error,                                \
+                    ::tkoz::srtest::fpErrAbs((actual), (expected))))
+
+/// Require 2 floating point numbers to be nearly equal (relative error).
+#define TEST_REQUIRE_NEAR_EQ_REL(actual, expected, error)                      \
+  ::tkoz::srtest::requireCondition(                                            \
+      ::tkoz::srtest::fpErrRel((actual), (expected)) < (error),                \
+      ::std::format("expected {} to be near {} with relative error {} "        \
+                    "but found relative error {}",                             \
+                    #actual, #expected, #error,                                \
+                    ::tkoz::srtest::fpErrRel((actual), (expected))))
+
 /// The main function for the test runner. This macro should be defined before
 /// including this file in a single source file for the test runner executable.
 /// Most likely, that source file would just contain 2 lines:
@@ -443,45 +493,45 @@ inline void requireNothrow(FuncT &&func, std::string_view expr,
 #include <vector>
 
 int main(int argc, char **argv) {
-  ::std::ignore = argc;
-  ::std::ignore = argv;
+  std::ignore = argc;
+  std::ignore = argv;
 
-  const auto &registry = ::tkoz::srtest::TestRegistry::instance();
+  auto const &registry = tkoz::srtest::TestRegistry::instance();
 
-  const auto &allTests = registry.allTests();
-  ::std::cout << ::std::format("Found {} registered tests", allTests.size())
-              << ::std::endl;
+  auto const &allTests = registry.allTests();
+  std::cout << std::format("Found {} registered tests", allTests.size())
+            << std::endl;
 
   for (const auto &file : registry.allFilesView()) {
-    ::std::cout << ::std::format("Found {} tests in file: {}",
-                                 registry.numTestsInFile(file), file)
-                << ::std::endl;
+    std::cout << std::format("Found {} tests in file: {}",
+                             registry.numTestsInFile(file), file)
+              << std::endl;
     for (const auto &test : registry.testsInFileView(file)) {
-      ::std::cout << ::std::format("Running test: {} ({}, line {})", test.name,
-                                   ::tkoz::srtest::testCategoryString(test.cat),
-                                   test.line)
-                  << ::std::endl;
+      std::cout << std::format("Running test: {} ({}, line {})", test.name,
+                               tkoz::srtest::testCategoryString(test.cat),
+                               test.line)
+                << std::endl;
       try {
         test.run();
-      } catch (const ::tkoz::srtest::TestFailure &exc) {
-        ::std::cout << "Test failure: " << exc.what() << std::endl;
+      } catch (tkoz::srtest::TestFailure const &exc) {
+        std::cout << "Test failure: " << exc.what() << std::endl;
         return 1;
-      } catch (const ::std::exception &exc) {
-        ::std::cout << std::format("Test failure ({}): ",
-                                   ::tkoz::srtest::excName(&typeid(exc)))
-                    << exc.what() << ::std::endl;
+      } catch (std::exception const &exc) {
+        std::cout << std::format("Test failure ({}): ",
+                                 tkoz::srtest::excName(&typeid(exc)))
+                  << exc.what() << std::endl;
         return 1;
       } catch (...) {
-        const std::type_info *const type = abi::__cxa_current_exception_type();
-        ::std::cout << std::format("Test failure ({})",
-                                   ::tkoz::srtest::excName(type))
-                    << ::std::endl;
+        std::type_info const *const type = abi::__cxa_current_exception_type();
+        std::cout << std::format("Test failure ({})",
+                                 tkoz::srtest::excName(type))
+                  << std::endl;
         return 1;
       }
     }
   }
 
-  ::std::cout << "Done" << ::std::endl;
+  std::cout << "Done" << std::endl;
   return 0;
 }
 
