@@ -27,11 +27,11 @@ public:
 
   /// Access the computed sin(theta).
   /// \return The computed sin(theta).
-  [[nodiscard]] inline T sinTheta() const noexcept { return mSinTheta; }
+  [[nodiscard]] inline auto sinTheta() const noexcept -> T { return mSinTheta; }
 
   /// Access the computed cos(theta).
   /// \return The computed cos(theta).
-  [[nodiscard]] inline T cosTheta() const noexcept { return mCosTheta; }
+  [[nodiscard]] inline auto cosTheta() const noexcept -> T { return mCosTheta; }
 
   /// Apply the rotation in place
   /// \param x The x coordinate

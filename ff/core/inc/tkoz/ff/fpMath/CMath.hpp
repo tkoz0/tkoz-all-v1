@@ -16,8 +16,8 @@ namespace tkoz::ff::fpMath {
 /// \param x The input angle
 /// \return A \a std::pair containing \a [sin(x),cos(x)]
 template <typename T>
-[[nodiscard]] inline constexpr std::pair<std::decay_t<T>, std::decay_t<T>>
-cmathSinCos(T &&x) noexcept {
+[[nodiscard]] inline constexpr auto cmathSinCos(T &&x) noexcept
+    -> std::pair<std::decay_t<T>, std::decay_t<T>> {
   using U = std::decay_t<T>;
 #ifdef __GLIBC__
   U sinX;
