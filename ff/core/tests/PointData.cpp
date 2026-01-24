@@ -1,13 +1,5 @@
 #include <tkoz/ff/PointData.hpp>
 
-namespace tkoz::ff {
-
-// TODO implement the JSON functions here instead of in the header
-
-} // namespace tkoz::ff
-
-#if TEST
-
 #include <tkoz/SRTest.hpp>
 
 #include <span>
@@ -353,5 +345,3 @@ TEST_CREATE_FAST(iterate) {
     static_assert(!cCanAssign<decltype(bc.crend()), double>);
   }
 }
-
-#endif // TEST

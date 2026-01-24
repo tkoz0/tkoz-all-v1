@@ -1,7 +1,4 @@
 #include <tkoz/ff/fpMath/CMath.hpp>
-
-#if TEST
-
 #include <tkoz/ff/fpMath/Numbers.hpp>
 
 #include <tkoz/SRTest.hpp>
@@ -25,5 +22,3 @@ TEST_CREATE_FAST(sincos1) {
     TEST_REQUIRE_NEAR_EQ_REL(c, -1.0, 1e-15);
   }
 }
-
-#endif // TEST

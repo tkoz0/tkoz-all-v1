@@ -1,7 +1,5 @@
 #include <tkoz/ff/fpMath/Numbers.hpp>
 
-#if TEST
-
 #include <cfloat>
 #include <limits>
 #include <numbers>
@@ -189,5 +187,3 @@ static_assert(cNumPi<double> != 3.1415926535897934);
 // other ...
 
 } // namespace tkoz::ff::fpMath
-
-#endif // TEST

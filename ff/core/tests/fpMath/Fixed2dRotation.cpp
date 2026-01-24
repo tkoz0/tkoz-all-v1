@@ -1,7 +1,4 @@
 #include <tkoz/ff/fpMath/Fixed2dRotation.hpp>
-
-#if TEST
-
 #include <tkoz/ff/fpMath/Numbers.hpp>
 
 #include <tkoz/SRTest.hpp>
@@ -24,5 +21,3 @@ TEST_CREATE_FAST(rotate1) {
     TEST_REQUIRE_NEAR_EQ_REL(y, -1.9, 1e-15);
   }
 }
-
-#endif // TEST

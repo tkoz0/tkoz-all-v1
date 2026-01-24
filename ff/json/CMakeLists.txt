@@ -1,5 +1,0 @@
-add_library(tkoz-ff-json)
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
-target_sources(tkoz-ff-json PRIVATE ${SOURCES})
-target_include_directories(tkoz-ff-json PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc")
-target_link_libraries(tkoz-ff-json PRIVATE tkoz_options_common tkoz-srtest)

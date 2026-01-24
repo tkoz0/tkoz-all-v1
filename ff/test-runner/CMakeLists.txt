@@ -1,8 +1,6 @@
-add_executable(tkoz-ff-test main.cpp)
+add_executable(tkoz-ff-test-runner main.cpp)
 
-target_compile_definitions(tkoz-ff-test PRIVATE TEST)
-
-target_link_libraries(tkoz-ff-test
+target_link_libraries(tkoz-ff-test-runner
     PRIVATE
         tkoz_options_common
         tkoz-srtest
@@ -12,9 +10,7 @@ target_link_libraries(tkoz-ff-test
 
         -Wl,--whole-archive
 
-        tkoz-ff-core
-        tkoz-ff-json
-        tkoz-ff-vars
+        tkoz-ff-core-tests
 
         -Wl,--no-whole-archive
 )

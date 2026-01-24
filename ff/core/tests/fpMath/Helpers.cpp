@@ -1,7 +1,5 @@
 #include <tkoz/ff/fpMath/Helpers.hpp>
 
-#if TEST
-
 namespace tkoz::ff::fpMath {
 
 static_assert(cFactorial<0> == 1ull);
@@ -27,5 +25,3 @@ static_assert(cFactorial<19> == 121645100408832000ull);
 static_assert(cFactorial<20> == 2432902008176640000ull);
 
 } // namespace tkoz::ff::fpMath
-
-#endif
