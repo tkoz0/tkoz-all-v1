@@ -16,16 +16,21 @@ Coverage. Additionally, tests with CTest can be run with
 Create a directory for the library in the appropriate place. Then it should get
 a `CMakeLists.txt` like the one below and 2 subdirectories named `src` and
 `inc`. Inside `inc` we need the full path which for many of my things is
-going to start with `tkoz/`. Tests are defined inside the `.cpp` files and are
-found by a test runner that links the library (via static registration).
+going to start with `tkoz/`. Additionally, create a library of the same name
+but with `-tests` at the end, and a `tests` directory for unit tests. This
+allows separating unit tests from production code.
 
 ```cmake
 add_library(library-name)
+add_library(library-name-tests)
 
 # Recursively find .cpp files in source.
 # CMake should rerun when a .cpp file is created or removed.
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
 target_sources(library-name PRIVATE ${SOURCES})
+
+file(GLOB_RECURSE SOURCES_TESTS CONFIGURE_DEPENDS tests/*.cpp)
+target_sources(library-name PRIVATE ${SOURCES_TESTS})
 
 target_include_directories(library-name
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/inc")
@@ -33,8 +38,14 @@ target_include_directories(library-name
 target_link_libraries(library-name
     PRIVATE
         tkoz_options_common # Commonly used compile/linking options
-        tkoz-srtest         # The testing library I created for now
         other-library       # Link other libraries
+)
+
+target_link_libraries(library-name-tests
+    PRIVATE
+        tkoz-srtest # Link the test library, needed for writing tests
+        tkoz_options_common
+        other-library
 )
 ```
 
@@ -59,22 +70,18 @@ target_link_libraries(header-library
 
 ## creating tests
 
-For compiled libraries, the tests go at the bottom of the `.cpp` files after
-the actual library code. For header only libraries, they get a separate project
-that links the header library and defines tests in `.cpp` files. Create a
-`#if TEST` block for conditional compilation and define tests similar to below.
+For a library named `library-name` (either header only or compiled), create a
+compiled library named `library-name-tests` which links `library-name`. Then
+its `.cpp` files contain tests using the `TEST_*` macros defined in
+`"tkoz/SRTest.hpp"`.
 
 ```cpp
-#if TEST
-
 TEST_CREATE(testName)
 {
     int a = 5;
     int b = 10;
     TEST_REQUIRE(a+b == 15);
 }
-
-#endif // TEST
 ```
 
 The ideas/concepts for a test library may still be work in progress and could
@@ -146,17 +153,17 @@ target_link_libraries(_test_run
 
         # List the libraries here, which are forced to be linked even
         # though the test runner references none of their symbols.
-        library-1
-        library-2
+        library-1-tests
+        library-2-tests
 
         -Wl,--no-whole-archive
 )
 ```
 
 ```cpp
-// The header additionally defines the main function with this macro.
-#define TKOZ_SRTEST_MAIN
-#include <tkoz/SRTest.hpp>
+// Just a single line to include the definition of main()
+// to be used and related functionality it depends on.
+#include <tkoz/SRTestMain.hpp>
 ```
 
 Currently this test runner is minimal and needs more features.

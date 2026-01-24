@@ -2,13 +2,17 @@
 ///
 /// Tests are defined along library code and get registered to an executable
 /// with static linking.
+///
+/// Do not use anything in the \a tkoz::srtest namespace directly. This is
+/// currently internal and subject to change. Write tests using the \a TEST_*
+/// macros which are considered the only public interface of the library.
 
 #pragma once
 
+#include <compare>
 #include <cstdint>
 #include <format>
-#include <map>
-#include <ranges>
+#include <memory>
 #include <source_location>
 #include <stdexcept>
 #include <string>
@@ -18,8 +22,17 @@
 #include <utility>
 #include <vector>
 
+#if defined(__GNUG__) || defined(__clang__)
 #include <cxxabi.h> // Current exception info on GCC/Clang
+#endif
 
+/// Statically registered test library. The contents of this namespace are not
+/// intended to be used by client code and may change. To create tests and test
+/// conditions, use the \a TEST_* macros.
+///
+/// The only thing stopping us from having a unit test library without macros
+/// is some nice things like stringifying expressions passed to the condition
+/// checking macros.
 namespace tkoz::srtest {
 
 using TestFunction = void (*)();
@@ -27,29 +40,42 @@ using TestFunction = void (*)();
 /// \brief Test category enum.
 enum class TestCategory : std::uint8_t { FAST, SLOW };
 
-/// Convert a test category to a string
-[[maybe_unused]] static inline auto
-testCategoryString(TestCategory cat) noexcept -> std::string {
-  switch (cat) {
-  case TestCategory::FAST:
-    return "FAST";
-  case TestCategory::SLOW:
-    return "SLOW";
+/// Remove the repo root path from a test filename.
+/// \param fullPath The full file path from the \a __FILE__ macro
+/// \return The path with the repo root removed.
+[[nodiscard]] static inline auto testFilePath(std::string_view fullPath)
+    -> std::string {
+  static const std::string cRoot = TKOZ_SRTEST_SOURCE_ROOT;
+  static const std::string cExt = ".cpp";
+  if (!fullPath.starts_with(cRoot)) {
+    throw std::runtime_error(
+        std::format("test path does not begin with source root: {}", fullPath));
   }
-  // Make sure all enum values are handled. Compiler should warn if a new one
-  // is added but we forget about it.
-  std::unreachable();
+  if (!fullPath.ends_with(cExt)) {
+    throw std::runtime_error(
+        std::format("test path does not end with \"{}\": {}", cExt, fullPath));
+  }
+  if (fullPath.size() <= cRoot.size() + 4) {
+    throw std::runtime_error(
+        std::format("test path appears to be empty: {}", fullPath));
+  }
+  if (fullPath.contains(':')) {
+    throw std::runtime_error(
+        std::format("test path contains a color: {}", fullPath));
+  }
+  return std::string(fullPath.substr(
+      cRoot.size(), fullPath.size() - cRoot.size() - cExt.size()));
 }
 
 /// \brief The data associated with a single test.
-struct TestInstance {
-  TestInstance() = delete;
-  TestInstance(TestFunction func, std::string name, std::string file,
+struct TestCaseInfo {
+  TestCaseInfo() = delete;
+  TestCaseInfo(TestFunction func, std::string name, std::string const &file,
                std::size_t line, TestCategory cat)
-      : func(func), name(std::move(name)), file(std::move(file)), line(line),
+      : func(func), name(std::move(name)), file(testFilePath(file)), line(line),
         cat(cat) {}
-  TestInstance(const TestInstance &) = default;
-  TestInstance(TestInstance &&) = default;
+  TestCaseInfo(const TestCaseInfo &) = default;
+  TestCaseInfo(TestCaseInfo &&) = default;
 
   /// Call the test function.
   void run() const { func(); }
@@ -68,20 +94,31 @@ struct TestInstance {
 
   /// Test category
   const TestCategory cat;
+
+  /// Define the canonical ordering of tests to be first by file, then by the
+  /// order they are defined within a file (line number).
+  [[nodiscard]] friend inline auto operator<=>(TestCaseInfo const &a,
+                                               TestCaseInfo const &b) noexcept
+      -> std::strong_ordering {
+    std::strong_ordering fileCmp = a.file <=> b.file;
+    if (fileCmp == std::strong_ordering::equal) {
+      return a.line <=> b.line;
+    } else {
+      return fileCmp;
+    }
+  }
 };
 
 /// \brief The registry storing all statically registered tests.
 class TestRegistry {
 private:
   /// All tests that have been registered.
-  std::vector<TestInstance> mAllTests;
+  std::vector<std::unique_ptr<TestCaseInfo>> mAllTests;
 
-  /// Tests grouped by file, keeps track of indexes in mAllTests
-  /// Using \a std::map to keep tests ordered by files.
-  std::map<std::string, std::vector<std::size_t>> mPerFileTests;
+  // This class is a singleton.
+  TestRegistry() = default;
 
 public:
-  TestRegistry() = default;
   TestRegistry(const TestRegistry &) = delete;
   TestRegistry(TestRegistry &&) = delete;
   TestRegistry &operator=(const TestRegistry &) = delete;
@@ -95,35 +132,8 @@ public:
 
   /// \return All tests contained in the registry.
   [[nodiscard]] inline auto allTests() const noexcept
-      -> std::vector<TestInstance> const & {
+      -> std::vector<std::unique_ptr<TestCaseInfo>> const & {
     return mAllTests;
-  }
-
-  /// Access a view listing all files containing registered tests. The view is
-  /// invalidated if the registry is modified.
-  /// \return All files with tests.
-  [[nodiscard]] inline auto allFilesView() const noexcept {
-    return std::views::keys(mPerFileTests);
-  }
-
-  /// \return Number of tests in a file.
-  /// \throw std::out_of_range If the file is not in the registry.
-  [[nodiscard]] inline auto
-  numTestsInFile(const std::string &file) const noexcept -> std::size_t {
-    return mPerFileTests.at(file).size();
-  }
-
-  /// Access a view of all test objects in a file. The view is invalidated if
-  /// the registry is modified.
-  /// \return All tests in a file.
-  /// \throw std::out_of_range If the file is not in the registry.
-  [[nodiscard]] inline auto
-  testsInFileView(std::string const &file) const noexcept {
-    return mPerFileTests.at(file) |
-           std::views::transform(
-               [this](std::size_t index) -> const TestInstance & {
-                 return mAllTests[index];
-               });
   }
 
   /// \return Begin iterator for all registered tests.
@@ -147,8 +157,8 @@ public:
   /// \param name Name/identifier for the test
   inline void addTest(TestFunction func, std::string name, std::string file,
                       std::size_t line, TestCategory cat) {
-    mPerFileTests[file].push_back(mAllTests.size());
-    mAllTests.emplace_back(func, std::move(name), std::move(file), line, cat);
+    mAllTests.push_back(std::make_unique<TestCaseInfo>(
+        func, std::move(name), std::move(file), line, cat));
   }
 };
 
@@ -156,7 +166,7 @@ public:
 /// For convenience, usually you would use the TEST_CREATE macro.
 /// \param name A string identifier for the test.
 /// \param func A function object used to run the test.
-inline void registerTest(std::string name, TestFunction func, std::string file,
+inline void registerTest(TestFunction func, std::string name, std::string file,
                          std::size_t line, TestCategory cat) {
   TestRegistry::instance().addTest(func, std::move(name), std::move(file), line,
                                    cat);
@@ -174,8 +184,7 @@ public:
   /// \param name A name/identifier for the test.
   TestRegistrar(TestFunction func, std::string name, std::string file,
                 std::size_t line, TestCategory cat) {
-    TestRegistry::instance().addTest(func, std::move(name), std::move(file),
-                                     line, cat);
+    registerTest(func, std::move(name), std::move(file), line, cat);
   }
 };
 
@@ -209,7 +218,7 @@ inline void throwFailure(std::string_view msg, std::source_location srcLoc) {
 /// \note A fundamental limitation (before reflection) is that purely macro free
 /// libraries cannot turn the expression into a string, so macros are still very
 /// helpful for unit test library design.
-inline void requireCondition(bool condition, std::string_view falseMsg,
+inline void requireCondition(bool condition, std::string_view falseMsg = "",
                              std::source_location srcLoc = sourceLocation()) {
   if (!condition) [[unlikely]] {
     throwFailure(falseMsg, srcLoc);
@@ -218,22 +227,26 @@ inline void requireCondition(bool condition, std::string_view falseMsg,
 
 /// Helper to demangle names from the GCC/Clang ABI for current exception.
 /// If not possible to get type information, returns \a "unknown type".
+/// If somehow we compile this with an unsupported compiler, it falls back to
+/// simply returning the name without demangling.
 /// \param type The \a std::type_info object from
-/// \a abi::__cxa_current_exception_type
+/// \a abi::__cxa_current_exception_type (or nullptr for fallback)
 /// \return C string for the demangled name attempt.
-[[nodiscard]] inline auto excName(std::type_info const *type) -> std::string {
+[[nodiscard]] inline auto typeName(std::type_info const *type) -> std::string {
   if (!type) {
-    return "unknown type";
+    return "(unknown type)";
   }
+  // Demangle the name with <cxxabi.h> if on GCC or Clang
+#if defined(__GNUG__) || defined(__clang__)
   int status = -1;
   char *name = abi::__cxa_demangle(type->name(), nullptr, nullptr, &status);
   if (status == 0 && name) {
     std::string result = name;
     std::free(name);
     return result;
-  } else {
-    return type->name();
   }
+#endif
+  return type->name();
 }
 
 /// Require an exception of specified type to occur.
@@ -257,15 +270,19 @@ inline void requireThrowExc(FuncT &&func, std::string_view expr,
     throwFailure(
         custMsg.empty()
             ? std::format("{} threw {}, expected {}, exception message: {}",
-                          expr, excName(&typeid(exc)), typeid(ExcTypeT).name(),
+                          expr, typeName(&typeid(exc)), typeid(ExcTypeT).name(),
                           exc.what())
             : custMsg,
         srcLoc);
   } catch (...) {
+#if defined(__GNUG__) || defined(__clang__)
     std::type_info const *const type = abi::__cxa_current_exception_type();
+#else
+    std::type_info const *const type = nullptr;
+#endif
     throwFailure(custMsg.empty()
                      ? std::format("{} threw {}, expected {}", expr,
-                                   excName(type), excName(&typeid(ExcTypeT)))
+                                   typeName(type), typeName(&typeid(ExcTypeT)))
                      : custMsg,
                  srcLoc);
   }
@@ -316,14 +333,18 @@ inline void requireNothrow(FuncT &&func, std::string_view expr,
         custMsg.empty()
             ? std::format(
                   "{} threw {}, expected no exception, exception message: {}",
-                  expr, excName(&typeid(exc)), exc.what())
+                  expr, typeName(&typeid(exc)), exc.what())
             : custMsg,
         srcLoc);
   } catch (...) {
+#if defined(__GNUG__) || defined(__clang__)
     std::type_info const *const type = abi::__cxa_current_exception_type();
+#else
+    std::type_info const *const type = nullptr;
+#endif
     throwFailure(custMsg.empty()
                      ? std::format("{} threw {}, expected no exception", expr,
-                                   excName(type))
+                                   typeName(type))
                      : custMsg,
                  srcLoc);
   }
@@ -368,20 +389,28 @@ inline T fpErrRel(T actual, U expected) {
 // #define TKOZ_SRTEST_INTERNAL_TEST_NAME_CONCAT(a, b)
 //   TKOZ_SRTEST_INTERNAL_TEST_NAME_CONCAT2(a, b)
 
-#define TEST_CREATE_INTERNAL(name, cat, counter)                               \
-  static void TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_test__, name, __,     \
+#define TKOZ_SRTEST_INTERNAL_CREATE(name, cat, counter)                        \
+  static void TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_testfunc__, name, __, \
                                             counter)();                        \
-  static ::tkoz::srtest::TestRegistrar TKOZ_SRTEST_INTERNAL_CONCAT_4(          \
-      _tkoz_srtest_reg__, name, __, counter)(                                  \
-      TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_test__, name, __, counter),   \
-      #name, __FILE__, __LINE__, cat);                                         \
-  static void TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_test__, name, __,     \
+  struct _tkoz_srtest_names_unique__##name {};                                 \
+  [[maybe_unused]] static ::tkoz::srtest::TestRegistrar                        \
+      TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_registrar__, name, __,        \
+                                    counter)(                                  \
+          TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_testfunc__, name, __,     \
+                                        counter),                              \
+          #name, __FILE__, __LINE__, cat);                                     \
+  static void TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_testfunc__, name, __, \
                                             counter)()
+
+//
+// These macros actually define the public interface for the test library.
+//
 
 /// Create a test with the provided name (not quoted) and a curly brace {}
 /// block following for the function definition.
 /// Usage: TEST_CREATE(testName) { ... test code ... }
-#define TEST_CREATE(name, cat) TEST_CREATE_INTERNAL(name, cat, __COUNTER__)
+#define TEST_CREATE(name, cat)                                                 \
+  TKOZ_SRTEST_INTERNAL_CREATE(name, cat, __COUNTER__)
 
 #define TEST_CREATE_FAST(name)                                                 \
   TEST_CREATE(name, ::tkoz::srtest::TestCategory::FAST)
@@ -478,61 +507,6 @@ inline T fpErrRel(T actual, U expected) {
                     #actual, #expected, #error,                                \
                     ::tkoz::srtest::fpErrRel((actual), (expected))))
 
-/// The main function for the test runner. This macro should be defined before
-/// including this file in a single source file for the test runner executable.
-/// Most likely, that source file would just contain 2 lines:
-/// #define TKOZ_SRTEST_MAIN
-/// #include <tkoz/SRTest.hpp>
-
-#ifdef TKOZ_SRTEST_MAIN
-
-#include <exception>
-#include <format>
-#include <iostream>
-#include <utility>
-#include <vector>
-
-int main(int argc, char **argv) {
-  std::ignore = argc;
-  std::ignore = argv;
-
-  auto const &registry = tkoz::srtest::TestRegistry::instance();
-
-  auto const &allTests = registry.allTests();
-  std::cout << std::format("Found {} registered tests", allTests.size())
-            << std::endl;
-
-  for (const auto &file : registry.allFilesView()) {
-    std::cout << std::format("Found {} tests in file: {}",
-                             registry.numTestsInFile(file), file)
-              << std::endl;
-    for (const auto &test : registry.testsInFileView(file)) {
-      std::cout << std::format("Running test: {} ({}, line {})", test.name,
-                               tkoz::srtest::testCategoryString(test.cat),
-                               test.line)
-                << std::endl;
-      try {
-        test.run();
-      } catch (tkoz::srtest::TestFailure const &exc) {
-        std::cout << "Test failure: " << exc.what() << std::endl;
-        return 1;
-      } catch (std::exception const &exc) {
-        std::cout << std::format("Test failure ({}): ",
-                                 tkoz::srtest::excName(&typeid(exc)))
-                  << exc.what() << std::endl;
-        return 1;
-      } catch (...) {
-        std::type_info const *const type = abi::__cxa_current_exception_type();
-        std::cout << std::format("Test failure ({})",
-                                 tkoz::srtest::excName(type))
-                  << std::endl;
-        return 1;
-      }
-    }
-  }
-
-  std::cout << "Done" << std::endl;
-  return 0;
-}
-
-#endif // TKOZ_SRTEST_MAIN
+//
+// End of the public interface for the test library.
+//
