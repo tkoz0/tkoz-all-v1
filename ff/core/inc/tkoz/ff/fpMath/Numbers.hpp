@@ -2,6 +2,8 @@
 
 #include <tkoz/ff/Types.hpp>
 
+#include <limits>
+
 namespace tkoz::ff::fpMath {
 
 /// Stores hard coded numerical constants which can be substituted in various
@@ -18,13 +20,54 @@ namespace tkoz::ff::fpMath {
 
 // === Actual constants of significance ===
 
-// Machine epsilon. The difference between 1.0 and the next possible number.
-// The relative error of a floating point approximation of a real number is
-// at most half of the machine epsilon as long as its magnitude/exponent is
-// within the suitable range.
+/// Machine epsilon. The difference between 1.0 and the next possible number.
+/// The relative error of a floating point approximation of a real number is
+/// at most half of the machine epsilon as long as its magnitude/exponent is
+/// within the suitable range.
 template <cFpType T> inline constexpr T cNumEps;
 template <> inline constexpr float cNumEps<float> = 1.19209290e-7f;
 template <> inline constexpr double cNumEps<double> = 2.2204460492503131e-16;
+
+/// Non a number. NaN may be quiet or signaling. In practice, only quiet NaNs
+/// will really show up, continuing calculations until the result is NaN. For a
+/// flame fractal renderer, we should let NaN tell us to restart iteration.
+template <cFpType T, bool cSignalingT = false> inline constexpr T cNumNan;
+template <>
+inline constexpr float cNumNan<float, false> =
+    std::numeric_limits<float>::quiet_NaN();
+template <>
+inline constexpr double cNumNan<double, false> =
+    std::numeric_limits<double>::quiet_NaN();
+template <>
+inline constexpr float cNumNan<float, true> =
+    std::numeric_limits<float>::signaling_NaN();
+template <>
+inline constexpr double cNumNan<double, true> =
+    std::numeric_limits<double>::signaling_NaN();
+
+/// Infinity. Calculations that overflow or underflow should result in this.
+/// For a flame fractal renderer, this should tell us that the functions may be
+/// non contractive on average and restart iteration.
+template <cFpType T> inline constexpr T cNumInf;
+template <>
+inline constexpr float cNumInf<float> = std::numeric_limits<float>::infinity();
+template <>
+inline constexpr double cNumInf<double> =
+    std::numeric_limits<double>::infinity();
+
+/// Maximum finite value.
+template <cFpType T> inline constexpr T cNumMax;
+template <>
+inline constexpr float cNumMax<float> = std::numeric_limits<float>::max();
+template <>
+inline constexpr double cNumMax<double> = std::numeric_limits<double>::max();
+
+/// Minimum finite value.
+template <cFpType T> inline constexpr T cNumMin;
+template <>
+inline constexpr float cNumMin<float> = std::numeric_limits<float>::min();
+template <>
+inline constexpr double cNumMin<double> = std::numeric_limits<double>::min();
 
 /// Math constant e
 /// Value: 2.7182818284 5904523536 0287471352 6624977572 4709369995 ...
