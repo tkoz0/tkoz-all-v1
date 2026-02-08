@@ -84,10 +84,10 @@ static constexpr const char *BG_B_MAGENTA = "\033[105m";
 static constexpr const char *BG_B_CYAN = "\033[106m";
 static constexpr const char *BG_B_WHITE = "\033[107m";
 
-/// Command parser. Pass \a argc and \a argv to its constructor.
+/// Command parser. Pass \c argc and \c argv to its constructor.
 /// If there is a problem parsing or the help message should be displayed,
-/// it handles that and calls \a std::exit. Otherwise, its options are
-/// available for use in \a main()
+/// it handles that and calls \c std::exit . Otherwise, its options are
+/// available for use in \c main()
 ///
 /// TODO
 /// - filter (-f/--filter ?)
@@ -206,7 +206,7 @@ public:
   }
 
   /// \return The failure message if a parsing failure occurred, otherwise an
-  /// empty \a std::string.
+  /// empty \c std::string .
   [[nodiscard]] auto failureMessage() const noexcept -> std::string const & {
     return mFailureMessage;
   }
@@ -223,7 +223,7 @@ public:
 std::ostream &gInfoStream = std::cerr;
 
 /// The command line argument information. At the start of the program, call
-/// \a CmdArgs::parse to setup this data.
+/// \c CmdArgs::parse to setup this data.
 CmdArgs gCmdArgs;
 
 // Perform a basic filter on all registered tests to determine what to run.
@@ -288,7 +288,7 @@ void infoWrite(Ts &&...values) {
 }
 
 /// Test runner output. Write a sequence of values in color.
-/// TODO only write color if allowed by \a gCmdArgs.
+/// TODO only write color if allowed by \c gCmdArgs .
 template <typename... Ts>
   requires(sizeof...(Ts) > 0)
 void infoWriteColored(const char *color, Ts &&...values) {
@@ -307,7 +307,7 @@ template <typename... Ts> void infoWriteLine(Ts &&...values) {
 }
 
 /// Test runner output. Write a sequence of values in color with a new line.
-/// TODO only write color if allowed by \a gCmdArgs.
+/// TODO only write color if allowed by \c gCmdArgs .
 template <typename... Ts>
 void infoWriteColoredLine(const char *color, Ts &&...values) {
   if constexpr (sizeof...(Ts) > 0) {
@@ -345,7 +345,10 @@ int main(int argc, char **argv) {
   std::size_t numSuccess = 0;
   std::size_t numFailed = 0;
 
-  using Clock = std::chrono::high_resolution_clock;
+  // We should have a monotonicity guarantee for timing performance so it is
+  // better to use steady_clock instead of high_resolution_clock.
+  using Clock = std::chrono::steady_clock;
+  static_assert(Clock::is_steady);
   using TimePoint = decltype(Clock::now());
   using TimeDelta =
       decltype(std::declval<TimePoint>() - std::declval<TimePoint>());
