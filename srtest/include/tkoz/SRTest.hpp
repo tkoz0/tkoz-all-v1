@@ -3,13 +3,15 @@
 /// Tests are defined along library code and get registered to an executable
 /// with static linking.
 ///
-/// Do not use anything in the \a tkoz::srtest namespace directly. This is
-/// currently internal and subject to change. Write tests using the \a TEST_*
+/// Do not use anything in the \c tkoz::srtest namespace directly. This is
+/// currently internal and subject to change. Write tests using the \c TEST_*
 /// macros which are considered the only public interface of the library.
 
 #pragma once
 
+#include <charconv>
 #include <compare>
+#include <concepts>
 #include <cstdint>
 #include <format>
 #include <memory>
@@ -28,7 +30,7 @@
 
 /// Statically registered test library. The contents of this namespace are not
 /// intended to be used by client code and may change. To create tests and test
-/// conditions, use the \a TEST_* macros.
+/// conditions, use the \c TEST_* macros.
 ///
 /// The only thing stopping us from having a unit test library without macros
 /// is some nice things like stringifying expressions passed to the condition
@@ -41,7 +43,7 @@ using TestFunction = void (*)();
 enum class TestCategory : std::uint8_t { FAST, SLOW };
 
 /// Remove the repo root path from a test filename.
-/// \param fullPath The full file path from the \a __FILE__ macro
+/// \param fullPath The full file path from the \c __FILE__ macro
 /// \return The path with the repo root removed.
 [[nodiscard]] static inline auto testFilePath(std::string_view fullPath)
     -> std::string {
@@ -194,7 +196,7 @@ class TestFailure : public std::runtime_error {
 };
 
 /// Helper to ensure the std::source_location is correctly provided.
-/// By using \a consteval, we require the default usage.
+/// By using \c consteval , we require the default usage.
 [[nodiscard]] inline consteval auto sourceLocation(
     std::source_location srcLoc = std::source_location::current()) noexcept
     -> std::source_location {
@@ -210,9 +212,9 @@ inline void throwFailure(std::string_view msg, std::source_location srcLoc) {
 /// Require a condition to be true, fails the test if false.
 /// \param condition A boolean testable.
 /// \param falseMsg Message to use for the exception.
-/// \a condition is false.
+/// \c condition is false.
 /// \param srcLoc Source location object (use default value).
-/// \throw TestFailure If \a condition evaluates to false.
+/// \throw TestFailure If \c condition evaluates to false.
 /// \note This function may not work as nicely with compound boolean testables
 /// like (a >= 0 && a < n) because it only considers the final value.
 /// \note A fundamental limitation (before reflection) is that purely macro free
@@ -226,11 +228,11 @@ inline void requireCondition(bool condition, std::string_view falseMsg = "",
 }
 
 /// Helper to demangle names from the GCC/Clang ABI for current exception.
-/// If not possible to get type information, returns \a "unknown type".
+/// If not possible to get type information, returns `"unknown type"`.
 /// If somehow we compile this with an unsupported compiler, it falls back to
 /// simply returning the name without demangling.
-/// \param type The \a std::type_info object from
-/// \a abi::__cxa_current_exception_type (or nullptr for fallback)
+/// \param type The \c std::type_info object from
+/// \c abi::__cxa_current_exception_type (or nullptr for fallback)
 /// \return C string for the demangled name attempt.
 [[nodiscard]] inline auto typeName(std::type_info const *type) -> std::string {
   if (!type) {
@@ -350,32 +352,101 @@ inline void requireNothrow(FuncT &&func, std::string_view expr,
   }
 }
 
-/// Absolute difference between 2 floating point numbers. Note that the
-/// arguments need to be the same type and it is setup to give a useful message
-/// if they are not.
+/// Absolute difference between 2 floating point numbers. For type safety, we
+/// require T and U to be the same and have a compiler error if they are not.
 /// \param actual The actual computed value.
 /// \param expected The expected value.
 /// \tparam T Type of the first argument.
 /// \tparam U Type of the second argument.
 /// \return The absolute difference.
-template <typename T, typename U>
+template <std::floating_point T, std::floating_point U>
   requires std::is_same_v<T, U>
-inline T fpErrAbs(T actual, U expected) {
+inline auto fpErrAbs(T actual, U expected) -> T {
   return std::abs(actual - expected);
 }
 
-/// Relative difference between 2 floating point numbers. Note that the
-/// arguments need to be the same type and it is setup to give a useful message
-/// if they are not.
+/// Relative difference between 2 floating point numbers. For type safety, we
+/// require T and U to be the same and have a compiler error if they are not.
 /// \param actual The actual computed value.
 /// \param expected The expected value.
 /// \tparam T Type of the first argument.
 /// \tparam U Type of the second argument.
 /// \return The relative difference.
-template <typename T, typename U>
+template <std::floating_point T, std::floating_point U>
   requires std::is_same_v<T, U>
-inline T fpErrRel(T actual, U expected) {
-  return std::abs(actual - expected) / expected;
+inline auto fpErrRel(T actual, U expected) -> T {
+  return std::abs((actual - expected) / expected);
+}
+
+/// Check the absolute error against a given error bound. For type safety, we
+/// require T, U, and V to be the same and the compiler errors if they are not.
+/// \param actual The actual computed value.
+/// \param expected The expected value.
+/// \param cIncludeEqualT If the error is allowed to be equal to the bound.
+/// \param T Type of the first argument.
+/// \param U Type of the second argument.
+/// \param V Type of the third argument.
+/// \return True if the absolute error satisfies the error requirement.
+template <bool cIncludeEqualT = true, std::floating_point T,
+          std::floating_point U, std::floating_point V>
+  requires std::is_same_v<T, U> && std::is_same_v<U, V>
+inline auto fpErrAbsCheck(T actual, U expected, V error) -> bool {
+  if constexpr (cIncludeEqualT) {
+    return fpErrAbs(actual, expected) <= error;
+  } else {
+    return fpErrAbs(actual, expected) < error;
+  }
+}
+
+/// Check the relative error against a given error bound. For type safety, we
+/// require T, U, and V to be the same and the compiler errors if they are not.
+/// \param actual The actual computed value.
+/// \param expected The expected value.
+/// \param cIncludeEqualT If the error is allowed to be equal to the bound.
+/// \param T Type of the first argument.
+/// \param U Type of the second argument.
+/// \param V Type of the third argument.
+/// \return True if the absolute error satisfies the error requirement.
+template <bool cIncludeEqualT = true, std::floating_point T,
+          std::floating_point U, std::floating_point V>
+  requires std::is_same_v<T, U> && std::is_same_v<U, V>
+inline auto fpErrRelCheck(T actual, U expected, V error) -> bool {
+  if constexpr (cIncludeEqualT) {
+    return fpErrRel(actual, expected) <= error;
+  } else {
+    return fpErrRel(actual, expected) < error;
+  }
+}
+
+template <typename T>
+concept cFpStringSupportedType =
+    std::is_same_v<T, float> || std::is_same_v<T, double>;
+
+/// Size of buffer to use for \c std::to_chars result. Some recommendations are
+/// to use 32 bytes for float and 64 bytes for double. But the following choices
+/// seem to always work.
+template <cFpStringSupportedType T>
+inline constexpr std::size_t fpStringBufSize = static_cast<std::size_t>(-1);
+template <> inline constexpr std::size_t fpStringBufSize<float> = 16;
+template <> inline constexpr std::size_t fpStringBufSize<double> = 32;
+// template <> inline constexpr std::size_t fpStringBufSize<long double> = 80;
+
+/// String representation of a floating point value. This is meant to be a good
+/// format for people to read and guarantee bit exact round trip conversion.
+/// \param value The floating point value to convert
+/// \tparam T Floating point type
+/// \return Decimal string which can be converted back to the exact value.
+template <typename T>
+inline auto fpString(T value, std::source_location srcLoc = sourceLocation())
+    -> std::string {
+  char buf[fpStringBufSize<T>];
+  auto const [bufEnd, error] =
+      std::to_chars(buf, buf + fpStringBufSize<T>, value);
+  if (error != std::errc{}) {
+    throwFailure("internal failure converting floating point to string",
+                 srcLoc);
+  }
+  return std::string(buf, bufEnd);
 }
 
 } // namespace tkoz::srtest
@@ -490,22 +561,32 @@ inline T fpErrRel(T actual, U expected) {
   ::tkoz::srtest::requireThrowAny([&]() { static_cast<void>(expr); }, "", msg);
 
 /// Require 2 floating point numbers to be nearly equal (absolute error).
+/// Note: absolute error equal to the provided error bound is allowed.
 #define TEST_REQUIRE_NEAR_EQ_ABS(actual, expected, error)                      \
   ::tkoz::srtest::requireCondition(                                            \
-      ::tkoz::srtest::fpErrAbs((actual), (expected)) < (error),                \
-      ::std::format("expected {} to be near {} with absolute error {} "        \
+      ::tkoz::srtest::fpErrAbsCheck((actual), (expected), (error)),            \
+      ::std::format("expected {} ({}) to be near {} ({}) "                     \
+                    "with absolute error at most {} ({}) "                     \
                     "but found absolute error {}",                             \
-                    #actual, #expected, #error,                                \
-                    ::tkoz::srtest::fpErrAbs((actual), (expected))))
+                    #actual, ::tkoz::srtest::fpString(actual), #expected,      \
+                    ::tkoz::srtest::fpString(expected), #error,                \
+                    ::tkoz::srtest::fpString(error),                           \
+                    ::tkoz::srtest::fpString(                                  \
+                        ::tkoz::srtest::fpErrAbs((actual), (expected)))))
 
 /// Require 2 floating point numbers to be nearly equal (relative error).
+/// Note: relative error equal to the provided error bound is allowed.
 #define TEST_REQUIRE_NEAR_EQ_REL(actual, expected, error)                      \
   ::tkoz::srtest::requireCondition(                                            \
-      ::tkoz::srtest::fpErrRel((actual), (expected)) < (error),                \
-      ::std::format("expected {} to be near {} with relative error {} "        \
+      ::tkoz::srtest::fpErrRelCheck((actual), (expected), (error)),            \
+      ::std::format("expected {} ({}) to be near {} ({}) "                     \
+                    "with relative error at most {} ({}) "                     \
                     "but found relative error {}",                             \
-                    #actual, #expected, #error,                                \
-                    ::tkoz::srtest::fpErrRel((actual), (expected))))
+                    #actual, ::tkoz::srtest::fpString(actual), #expected,      \
+                    ::tkoz::srtest::fpString(expected), #error,                \
+                    ::tkoz::srtest::fpString(error),                           \
+                    ::tkoz::srtest::fpString(                                  \
+                        ::tkoz::srtest::fpErrRel((actual), (expected)))))
 
 //
 // End of the public interface for the test library.
