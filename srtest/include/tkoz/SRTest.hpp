@@ -42,13 +42,15 @@ using TestFunction = void (*)();
 /// \brief Test category enum.
 enum class TestCategory : std::uint8_t { FAST, SLOW };
 
+// TODO create a system for test tags in addition to categories.
+
 /// Remove the repo root path from a test filename.
 /// \param fullPath The full file path from the \c __FILE__ macro
 /// \return The path with the repo root removed.
 [[nodiscard]] static inline auto testFilePath(std::string_view fullPath)
     -> std::string {
-  static const std::string cRoot = TKOZ_SRTEST_SOURCE_ROOT;
-  static const std::string cExt = ".cpp";
+  static std::string const cRoot = TKOZ_SRTEST_SOURCE_ROOT;
+  static std::string const cExt = ".cpp";
   if (!fullPath.starts_with(cRoot)) {
     throw std::runtime_error(
         std::format("test path does not begin with source root: {}", fullPath));
@@ -76,26 +78,26 @@ struct TestCaseInfo {
                std::size_t line, TestCategory cat)
       : func(func), name(std::move(name)), file(testFilePath(file)), line(line),
         cat(cat) {}
-  TestCaseInfo(const TestCaseInfo &) = default;
+  TestCaseInfo(TestCaseInfo const &) = default;
   TestCaseInfo(TestCaseInfo &&) = default;
 
   /// Call the test function.
   void run() const { func(); }
 
   /// Function object to run the test.
-  const TestFunction func;
+  TestFunction const func;
 
   /// Name/identifier for the test.
-  const std::string name;
+  std::string const name;
 
   /// File containing the test
-  const std::string file;
+  std::string const file;
 
   /// Line where test is defined
-  const std::size_t line;
+  std::size_t const line;
 
   /// Test category
-  const TestCategory cat;
+  TestCategory const cat;
 
   /// Define the canonical ordering of tests to be first by file, then by the
   /// order they are defined within a file (line number).
@@ -121,9 +123,9 @@ private:
   TestRegistry() = default;
 
 public:
-  TestRegistry(const TestRegistry &) = delete;
+  TestRegistry(TestRegistry const &) = delete;
   TestRegistry(TestRegistry &&) = delete;
-  TestRegistry &operator=(const TestRegistry &) = delete;
+  TestRegistry &operator=(TestRegistry const &) = delete;
   TestRegistry &operator=(TestRegistry &&) = delete;
 
   /// \return The singleton instance keeping track of available tests.
@@ -208,6 +210,20 @@ inline void throwFailure(std::string_view msg, std::source_location srcLoc) {
   throw TestFailure(std::format("failure at {}:{}{}{}", srcLoc.file_name(),
                                 srcLoc.line(), msg.empty() ? "" : ": ", msg));
 }
+
+/// Per thread storage for messages to print at the end.
+/// The bool value is false to always print, true to print on failure only.
+inline thread_local std::vector<std::pair<bool, std::string>> sTestMessages;
+
+/// Add a message to the thread_local storage for test results.
+/// \param msg The message.
+/// \param failureOnly True if it should only be printed on test failure.
+inline void addMessage(std::string msg, bool failureOnly) {
+  sTestMessages.emplace_back(failureOnly, std::move(msg));
+}
+
+/// Clears the thread_local message storage for test results.
+inline void clearMessages() { sTestMessages.clear(); }
 
 /// Require a condition to be true, fails the test if false.
 /// \param condition A boolean testable.
@@ -469,13 +485,13 @@ inline auto fpString(T value, std::source_location srcLoc = sourceLocation())
                                     counter)(                                  \
           TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_testfunc__, name, __,     \
                                         counter),                              \
-          #name, __FILE__, __LINE__, cat);                                     \
+          #name, __FILE__, __LINE__, ::tkoz::srtest::TestCategory::cat);       \
   static void TKOZ_SRTEST_INTERNAL_CONCAT_4(_tkoz_srtest_testfunc__, name, __, \
                                             counter)()
 
-//
+////////////////////////////////////////////////////////////////////////////////
 // These macros actually define the public interface for the test library.
-//
+////////////////////////////////////////////////////////////////////////////////
 
 /// Create a test with the provided name (not quoted) and a curly brace {}
 /// block following for the function definition.
@@ -483,11 +499,9 @@ inline auto fpString(T value, std::source_location srcLoc = sourceLocation())
 #define TEST_CREATE(name, cat)                                                 \
   TKOZ_SRTEST_INTERNAL_CREATE(name, cat, __COUNTER__)
 
-#define TEST_CREATE_FAST(name)                                                 \
-  TEST_CREATE(name, ::tkoz::srtest::TestCategory::FAST)
+#define TEST_CREATE_FAST(name) TEST_CREATE(name, FAST)
 
-#define TEST_CREATE_SLOW(name)                                                 \
-  TEST_CREATE(name, ::tkoz::srtest::TestCategory::SLOW)
+#define TEST_CREATE_SLOW(name) TEST_CREATE(name, SLOW)
 
 /// Require a condition to be true, fail the test if false.
 #define TEST_REQUIRE(cond)                                                     \
@@ -588,6 +602,15 @@ inline auto fpString(T value, std::source_location srcLoc = sourceLocation())
                     ::tkoz::srtest::fpString(                                  \
                         ::tkoz::srtest::fpErrRel((actual), (expected)))))
 
-//
+/// Cause a test failure unconditionally with the provided message.
+#define TEST_FAILURE(msg) TEST_REQUIRE_MSG(0, msg)
+
+/// Print a message for test output always.
+#define TEST_MESSAGE_ALWAYS(msg) ::tkoz::srtest::addMessage(msg, false)
+
+/// Print a message for test output in the case of failure only.
+#define TEST_MESSAGE_FAILURE(msg) ::tkoz::srtest::addMessage(msg, true)
+
+////////////////////////////////////////////////////////////////////////////////
 // End of the public interface for the test library.
-//
+////////////////////////////////////////////////////////////////////////////////
