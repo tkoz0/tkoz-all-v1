@@ -364,39 +364,56 @@ int main(int argc, char **argv) {
     infoWriteLine(std::format(" {}:{} ({}, line {})", test->file, test->name,
                               tkoz::srtest::testCategoryString(test->cat),
                               test->line));
+    tkoz::srtest::clearMessages();
 
     bool success = false;
     TimePoint timeStart;
     TimePoint timeFinish;
+    std::optional<std::string> failureMessage;
     try {
       timeStart = Clock::now();
       test->run();
       timeFinish = Clock::now();
       success = true;
     } catch (tkoz::srtest::TestFailure const &exc) {
-      infoWriteColored(tkoz::srtest::FG_B_RED, "Test failure");
-      infoWriteLine(": ", exc.what());
+      failureMessage =
+          std::format("{}Test failure{}: {}", tkoz::srtest::FG_B_RED,
+                      tkoz::srtest::FMT_RESET, exc.what());
     } catch (std::exception const &exc) {
-      infoWriteColored(tkoz::srtest::FG_B_RED, "Test failure");
-      infoWriteLine(" (", tkoz::srtest::typeName(&typeid(exc)),
-                    "): ", exc.what());
+      failureMessage =
+          std::format("{}Test failure{} ({}): {}", tkoz::srtest::FG_B_RED,
+                      tkoz::srtest::FMT_RESET,
+                      tkoz::srtest::typeName(&typeid(exc)), exc.what());
     } catch (...) {
 #if defined(__GNUG__) || defined(__clang__)
       std::type_info const *const type = abi::__cxa_current_exception_type();
 #else
       std::type_info const *const type = nullptr;
 #endif
-      infoWriteColored(tkoz::srtest::FG_B_RED, "Test failure");
-      infoWriteLine(" (", tkoz::srtest::typeName(type), ")");
+      failureMessage =
+          std::format("{}Test failure{} ({})", tkoz::srtest::FG_B_RED,
+                      tkoz::srtest::FMT_RESET, tkoz::srtest::typeName(type));
     }
     ++numRun;
     if (success) {
       ++numSuccess;
+      for (auto const &[failureOnly, message] : tkoz::srtest::sTestMessages) {
+        if (!failureOnly) {
+          infoWriteLine(message);
+        }
+      }
       infoWriteColored(tkoz::srtest::FG_B_GREEN, "Success");
       infoWriteLine(" (", timingsString(timeFinish - timeStart), ")");
     } else {
       timeFinish = Clock::now();
       ++numFailed;
+      for (auto const &[failureOnly, message] : tkoz::srtest::sTestMessages) {
+        std::ignore = failureOnly;
+        infoWriteLine(message);
+      }
+      if (failureMessage.has_value()) {
+        infoWriteLine(*failureMessage);
+      }
       infoWriteColored(tkoz::srtest::FG_B_RED, "Failure");
       infoWriteLine(" (", timingsString(timeFinish - timeStart), ")");
       // TODO determine if we should terminate after first failure with cmd args
