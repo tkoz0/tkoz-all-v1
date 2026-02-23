@@ -63,29 +63,4 @@ using HistogramValue64 = std::uint64_t;
 
 // TODO should a compile time split be made for 32 bit and 64 bit modes?
 
-namespace detail {
-
-#ifdef TKOZ_FF_32 // 32 bit mode
-
-using NumberValue = float;
-using HistogramValue = std::uint32_t;
-
-#else
-#ifdef TKOZ_FF_64 // 64 bit mode
-
-using NumberValue = double;
-using HistogramValue = std::uint64_t;
-
-#else
-
-// #error "need TKOZ_FF_32 or TKOZ_FF_64 macro"
-
-#endif
-#endif
-
-} // namespace detail
-
-// using NumberValue = detail::NumberValue;
-// using HistogramValue = detail::HistogramValue;
-
 } // namespace tkoz::ff
