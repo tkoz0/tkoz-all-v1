@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <cstdint>
 #include <type_traits>
 
 namespace tkoz::ff {
@@ -40,27 +39,22 @@ namespace tkoz::ff {
 ///
 /// TODO should this library be compiled separately for 32 and 64 bit?
 
-/// Is T a valid floating point type?
-/// For the fractal renderer, we only use float and double for now, avoiding
-/// the platform specific or potentially concerning long double.
-/// This also allows extension to support other types later such as quad
-/// precision without specializing \a std::floating_point.
-/// \tparam T A floating point type
+/// Allowed primitive floating point types, only float and double currently.
 template <typename T>
-concept cFpType = std::is_same_v<T, float> || std::is_same_v<T, double>;
+concept cPrimitiveFpType =
+    std::is_same_v<T, float> || std::is_same_v<T, double>;
 
-/// Real number type for 32 bit mode
-using NumberValue32 = float;
+template <cPrimitiveFpType NumT> class Number;
 
-/// Histogram counter type for 32 bit mode
-using HistogramValue32 = std::uint32_t;
+/// 32 bit number type (float wrapper)
+using NumberFp32 = Number<float>;
 
-/// Real number type for 64 bit mode
-using NumberValue64 = double;
+/// 64 bit number type (double wrapper)
+using NumberFp64 = Number<double>;
 
-/// Histogram counter type for 64 bit mode
-using HistogramValue64 = std::uint64_t;
-
-// TODO should a compile time split be made for 32 bit and 64 bit modes?
+/// Number types that can be used for the flame fractal rendering.
+template <typename T>
+concept cNumberType =
+    std::is_same_v<T, NumberFp32> || std::is_same_v<T, NumberFp64>;
 
 } // namespace tkoz::ff
