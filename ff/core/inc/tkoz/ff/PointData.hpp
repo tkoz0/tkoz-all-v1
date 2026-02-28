@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tkoz/ff/Number.hpp>
+
 #include <array>
 #include <concepts>
 #include <span>
@@ -11,11 +13,11 @@ namespace tkoz::ff {
 /// \brief The storage and access components of a \a Point.
 /// \tparam cDimsT Number of dimensions
 /// \tparam NumberT Floating point type
-template <std::size_t cDimsT, std::floating_point NumberT>
+template <std::size_t cDimsT, cNumberType NumberT>
   requires(cDimsT > 0 && cDimsT < 256)
 class PointData {
 protected:
-  // The point/vector storage
+  /// The point/vector storage
   std::array<NumberT, cDimsT> mData;
 
 public:
@@ -104,9 +106,10 @@ public:
       default;
   [[nodiscard]] inline constexpr PointData(PointData &&other) noexcept =
       default;
-  inline constexpr PointData &
-  operator=(PointData const &other) noexcept = default;
-  inline constexpr PointData &operator=(PointData &&other) noexcept = default;
+  inline constexpr auto operator=(PointData const &other) noexcept
+      -> PointData & = default;
+  inline constexpr auto operator=(PointData &&other) noexcept
+      -> PointData & = default;
 
   // === Data access ===
 

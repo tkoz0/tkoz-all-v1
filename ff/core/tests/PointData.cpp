@@ -13,14 +13,14 @@ namespace {
 
 template <std::size_t N>
 [[nodiscard]] inline consteval auto staticAssertPointSize() noexcept -> bool {
-  return sizeof(PointData<N, float>) == N * sizeof(float) &&
-         sizeof(PointData<N, double>) == N * sizeof(double);
+  return sizeof(PointData<N, NumberFp32>) == N * sizeof(float) &&
+         sizeof(PointData<N, NumberFp64>) == N * sizeof(double);
 }
 
 template <std::size_t N>
 [[nodiscard]] inline consteval auto staticAssertPointAlign() noexcept -> bool {
-  return alignof(PointData<N, float>) == alignof(float) &&
-         alignof(PointData<N, double>) == alignof(double);
+  return alignof(PointData<N, NumberFp32>) == alignof(float) &&
+         alignof(PointData<N, NumberFp64>) == alignof(double);
 }
 
 template <std::size_t... Ns>
@@ -43,6 +43,9 @@ static_assert(staticAssertPointAllAligns<1, 2, 3, 5, 5>());
 
 } // namespace tkoz::ff
 
+using Fp32 = tkoz::ff::NumberFp32;
+using Fp64 = tkoz::ff::NumberFp64;
+
 TEST_CREATE_FAST(ctors) {
   using tkoz::ff::PointData;
 
@@ -51,7 +54,7 @@ TEST_CREATE_FAST(ctors) {
   // Default leaves memory uninitialized
   {
     float data[3] = {16.1583f, -3.881f, -561.0f};
-    auto *point = new (data) PointData<3, float>;
+    auto *point = new (data) PointData<3, Fp32>;
     std::ignore = point;
     TEST_REQUIRE_EQ(data[0], 16.1583f);
     TEST_REQUIRE_EQ(data[1], -3.881f);
@@ -61,8 +64,8 @@ TEST_CREATE_FAST(ctors) {
   // The zero point should overwrite the memory with zero
   {
     float data[3] = {-999.0f, -9999.0f, -99999.0f};
-    *(reinterpret_cast<PointData<3, float> *>(data)) =
-        PointData<3, float>::zero();
+    *(reinterpret_cast<PointData<3, Fp32> *>(data)) =
+        PointData<3, Fp32>::zero();
     TEST_REQUIRE_EQ(data[0], 0.0f);
     TEST_REQUIRE_EQ(data[0], 0.0f);
     TEST_REQUIRE_EQ(data[0], 0.0f);
@@ -71,7 +74,7 @@ TEST_CREATE_FAST(ctors) {
   // Number arg sequence
   {
     double data[4];
-    auto *point = new (data) PointData<4, double>(-3.14, 3.14, -6.28, 6.28);
+    auto *point = new (data) PointData<4, Fp64>(-3.14, 3.14, -6.28, 6.28);
     std::ignore = point;
     TEST_REQUIRE_EQ(data[0], -3.14);
     TEST_REQUIRE_EQ(data[1], 3.14);
@@ -83,7 +86,7 @@ TEST_CREATE_FAST(ctors) {
   {
     std::array<double, 4> array{9.8, 13.8, -12.1, 299.79};
     double data[4];
-    auto *point = new (data) PointData<4, double>(array);
+    auto *point = new (data) PointData<4, Fp64>(array);
     std::ignore = point;
     TEST_REQUIRE_EQ(data[0], 9.8);
     TEST_REQUIRE_EQ(data[1], 13.8);
@@ -96,7 +99,7 @@ TEST_CREATE_FAST(ctors) {
     float data[5] = {13.0, 21.0, 34.0, 55.0, 89.0};
     std::span span(data);
     float data2[5];
-    auto *point = new (data2) PointData<5, float>(span);
+    auto *point = new (data2) PointData<5, Fp32>(span);
     std::ignore = point;
     TEST_REQUIRE_EQ(data2[0], 13.0);
     TEST_REQUIRE_EQ(data2[1], 21.0);
@@ -109,7 +112,7 @@ TEST_CREATE_FAST(ctors) {
   {
     double data[2] = {1.618033988749895, 2.718281828459045};
     double data2[2];
-    auto *point = new (data2) PointData<2, double>(data);
+    auto *point = new (data2) PointData<2, Fp64>(data);
     std::ignore = point;
     TEST_REQUIRE_EQ(data2[0], 1.618033988749895);
     TEST_REQUIRE_EQ(data2[1], 2.718281828459045);
@@ -121,8 +124,8 @@ TEST_CREATE_FAST(access) {
 
   // Data array and pointer
   {
-    PointData<7, float> a;
-    PointData<9, double> b;
+    PointData<7, Fp32> a;
+    PointData<9, Fp64> b;
     TEST_REQUIRE_EQ(static_cast<void *>(&a.data()), static_cast<void *>(&a));
     TEST_REQUIRE_EQ(static_cast<void *>(&b.data()), static_cast<void *>(&b));
     TEST_REQUIRE_EQ(static_cast<void *>(a.dataPtr()), static_cast<void *>(&a));
@@ -142,9 +145,9 @@ TEST_CREATE_FAST(access) {
 
   // Element access (operator[])
   {
-    PointData<4, float> a(-1.1f, 2.2f, -3.3f, 4.4f);
-    PointData<8, double> b(3.0, 3.1, 3.14, 3.141, 3.1415, 3.14159, 3.141592,
-                           3.1415926);
+    PointData<4, Fp32> a(-1.1f, 2.2f, -3.3f, 4.4f);
+    PointData<8, Fp64> b(3.0, 3.1, 3.14, 3.141, 3.1415, 3.14159, 3.141592,
+                         3.1415926);
     TEST_REQUIRE_EQ(a[0], -1.1f);
     TEST_REQUIRE_EQ(a[1], 2.2f);
     TEST_REQUIRE_EQ(a[2], -3.3f);
@@ -161,7 +164,7 @@ TEST_CREATE_FAST(access) {
     a[1] = 1.5f;
     a[3] = 14.0f;
     b[2] = -1.5;
-    b[6] = 15.5f;
+    b[6] = 15.5;
     TEST_REQUIRE_EQ(a[1], 1.5f);
     TEST_REQUIRE_EQ(a[3], 14.0f);
     TEST_REQUIRE_EQ(b[2], -1.5);
@@ -185,8 +188,8 @@ TEST_CREATE_FAST(access) {
 
   // Element access (run time at)
   {
-    PointData<3, double> a(1.01, 1.03, 1.05);
-    PointData<1, float> b(-10.0f);
+    PointData<3, Fp64> a(1.01, 1.03, 1.05);
+    PointData<1, Fp32> b(-10.0f);
     TEST_REQUIRE_EQ(a.at(0), 1.01);
     TEST_REQUIRE_EQ(a.at(1), 1.03);
     TEST_REQUIRE_EQ(a.at(2), 1.05);
@@ -215,8 +218,8 @@ TEST_CREATE_FAST(access) {
 
   // Element access (compile time at)
   {
-    PointData<2, double> a(3.14, 2.718);
-    PointData<3, float> b(299792458.0f, 9.8f, 6.02e23f);
+    PointData<2, Fp64> a(3.14, 2.718);
+    PointData<3, Fp32> b(299792458.0f, 9.8f, 6.02e23f);
     TEST_REQUIRE_EQ(a.at<0>(), 3.14);
     TEST_REQUIRE_EQ(a.at<1>(), 2.718);
     TEST_REQUIRE_EQ(b.at<0>(), 299792458.0f);
@@ -246,8 +249,8 @@ TEST_CREATE_FAST(iterate) {
 
   // Forward direction
   {
-    PointData<6, float> a(6.9f, 9.6f, -1.0f, -2.0f, -3.0f, -4.0f);
-    PointData<5, double> b(1.0, 0.5, 0.33333333333333333333, 0.25, 0.2);
+    PointData<6, Fp32> a(6.9f, 9.6f, -1.0f, -2.0f, -3.0f, -4.0f);
+    PointData<5, Fp64> b(1.0, 0.5, 0.33333333333333333333, 0.25, 0.2);
 
     TEST_REQUIRE_EQ(*a.begin(), 6.9f);
     TEST_REQUIRE_EQ(a.begin() + 6, a.end());
@@ -265,19 +268,19 @@ TEST_CREATE_FAST(iterate) {
 
     std::vector<float> av;
     std::size_t i = 0;
-    for (float &f : a) {
-      av.push_back(f);
+    for (Fp32 &f : a) {
+      av.push_back(float{f});
       f = static_cast<float>(i * i);
       ++i;
     }
     TEST_REQUIRE_EQ(
         av, (std::vector<float>{6.9f, 9.6f, -1.0f, -2.0f, -3.0f, -4.0f}));
     TEST_REQUIRE_EQ(
-        a.data(), (std::array<float, 6>{0.0f, 1.0f, 4.0f, 9.0f, 16.0f, 25.0f}));
+        a.data(), (std::array<Fp32, 6>{0.0f, 1.0f, 4.0f, 9.0f, 16.0f, 25.0f}));
 
     std::vector<double> bv;
-    for (double const &d : b) {
-      bv.push_back(d);
+    for (Fp64 const &d : b) {
+      bv.push_back(double{d});
     }
     TEST_REQUIRE_EQ(
         bv, (std::vector<double>{1.0, 0.5, 0.33333333333333333333, 0.25, 0.2}));
@@ -303,8 +306,8 @@ TEST_CREATE_FAST(iterate) {
 
   // Reverse direction
   {
-    PointData<2, float> a(10.0f, 20.0f);
-    PointData<3, double> b(1.0, 1.5, 2.0);
+    PointData<2, Fp32> a(10.0f, 20.0f);
+    PointData<3, Fp64> b(1.0, 1.5, 2.0);
 
     TEST_REQUIRE_EQ(*a.rbegin(), 20.0f);
     TEST_REQUIRE_EQ(a.rbegin() + 2, a.rend());
@@ -320,14 +323,14 @@ TEST_CREATE_FAST(iterate) {
     std::vector<double> bv;
     std::size_t ai = 16;
     for (auto iter = a.rbegin(); iter != a.rend(); ++iter) {
-      av.push_back(*iter);
+      av.push_back(float{*iter});
       *iter = static_cast<float>(++ai);
     }
     for (auto iter = b.crbegin(); iter != b.crend(); ++iter) {
-      bv.push_back(*iter);
+      bv.push_back(double{*iter});
     }
     TEST_REQUIRE_EQ(av, (std::vector<float>{20.0f, 10.0f}));
-    TEST_REQUIRE_EQ(a.data(), (std::array<float, 2>{18.0f, 17.0f}));
+    TEST_REQUIRE_EQ(a.data(), (std::array<Fp32, 2>{18.0f, 17.0f}));
     TEST_REQUIRE_EQ(bv, (std::vector<double>{2.0, 1.5, 1.0}));
 
     // And with const references
