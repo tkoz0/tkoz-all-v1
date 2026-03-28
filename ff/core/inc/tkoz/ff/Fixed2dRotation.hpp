@@ -1,14 +1,14 @@
 #pragma once
 
+#include <tkoz/ff/CMath.hpp>
 #include <tkoz/ff/Types.hpp>
-#include <tkoz/ff/fpMath/CMath.hpp>
 
 #include <utility>
 
-namespace tkoz::ff::fpMath {
+namespace tkoz::ff {
 
 /// \brief Simple class for fixed rotations in the 2D plane.
-template <cFpType T> class Fixed2dRotation {
+template <cPrimitiveFpType T> class Fixed2dRotation {
 private:
   // These would have been const but they must be initialized after computing
   // simulatneous sincos so the initializer list does not work.
@@ -56,4 +56,4 @@ public:
 /// Deduction guide
 template <typename T> Fixed2dRotation(T) -> Fixed2dRotation<T>;
 
-} // namespace tkoz::ff::fpMath
+} // namespace tkoz::ff

@@ -1,4 +1,4 @@
-#include <tkoz/ff/fpMath/Numbers.hpp>
+#include <tkoz/ff/Constants.hpp>
 
 #include <cfloat>
 #include <limits>

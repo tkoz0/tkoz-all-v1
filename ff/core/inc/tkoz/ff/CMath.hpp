@@ -1,14 +1,14 @@
 #pragma once
 
+#include <tkoz/ff/Constants.hpp>
+#include <tkoz/ff/Factorial.hpp>
 #include <tkoz/ff/Types.hpp>
-#include <tkoz/ff/fpMath/Helpers.hpp>
-#include <tkoz/ff/fpMath/Numbers.hpp>
 
 #include <cmath>
 #include <type_traits>
 #include <utility>
 
-namespace tkoz::ff::fpMath {
+namespace tkoz::ff {
 
 /// Type generic simultaneous sine and cosine, calling the libm function from
 /// \a <cmath>. This may only be available on GCC and Clang and is just as
@@ -37,4 +37,4 @@ template <typename T>
 #endif
 }
 
-} // namespace tkoz::ff::fpMath
+} // namespace tkoz::ff

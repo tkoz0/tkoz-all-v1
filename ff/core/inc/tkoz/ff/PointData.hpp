@@ -41,7 +41,7 @@ public:
   [[nodiscard]] inline static auto zero() noexcept -> PointData {
     PointData result;
     for (std::size_t i = 0; i < cDimensions; ++i) {
-      result.mData[i] = static_cast<NumberT>(0.0);
+      result.mData[i] = typename NumberT::FpType{0.0};
     }
     return result;
   }

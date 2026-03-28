@@ -1,4 +1,4 @@
-#include <tkoz/ff/pointMath/PointNormTags.hpp>
+#include <tkoz/ff/PointNormTags.hpp>
 
 using namespace tkoz::ff;
 

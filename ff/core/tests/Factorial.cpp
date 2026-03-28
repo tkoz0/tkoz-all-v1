@@ -1,6 +1,6 @@
-#include <tkoz/ff/fpMath/Helpers.hpp>
+#include <tkoz/ff/Factorial.hpp>
 
-namespace tkoz::ff::fpMath {
+namespace tkoz::ff {
 
 static_assert(cFactorial<0> == 1ull);
 static_assert(cFactorial<1> == 1ull);
@@ -24,4 +24,4 @@ static_assert(cFactorial<18> == 6402373705728000ull);
 static_assert(cFactorial<19> == 121645100408832000ull);
 static_assert(cFactorial<20> == 2432902008176640000ull);
 
-} // namespace tkoz::ff::fpMath
+} // namespace tkoz::ff

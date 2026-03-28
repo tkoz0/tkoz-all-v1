@@ -10,11 +10,21 @@ namespace tkoz::ff {
 /// \brief Wrapper for float/double to ensure math policies are used properly
 /// and operations do not mix different precision.
 /// \tparam NumT Underlying number type (float or double).
+///
+/// We should be able to specialize this for half or double double later on.
+/// - half precision probably will not give good results
+/// - double double probably will just be slower and no better than double
+/// - float may be enough and the right choice for performance
+/// Currently we assume in some places that Number<...>::FpType is a primitive
+/// float/double so some work would be required to support more options.
 template <cPrimitiveFpType NumT> class Number {
 private:
   NumT mValue;
 
 public:
+  /// The underlying floating point type.
+  using FpType = NumT;
+
   /// Default constructor (uninitialized).
   [[nodiscard]] inline constexpr Number() noexcept = default;
 
@@ -43,6 +53,21 @@ public:
     requires std::is_same_v<NumT, ToNumT>
   [[nodiscard]] inline constexpr explicit operator ToNumT() const noexcept {
     return mValue;
+  }
+
+  /// Access the wrapped primitive value.
+  /// \return The underlying floating point value of this \c Number
+  [[nodiscard]] inline constexpr auto value() const noexcept -> NumT {
+    return mValue;
+  }
+
+  /// Replace the wrapped primitive value.
+  /// \param value The new value.
+  /// \note Templated for type safety to avoid mixing floating point types.
+  template <cPrimitiveFpType ArgNumT>
+    requires std::is_same_v<NumT, ArgNumT>
+  inline constexpr void setValue(ArgNumT value) noexcept {
+    mValue = value;
   }
 
   /// Rule of 5 things ///

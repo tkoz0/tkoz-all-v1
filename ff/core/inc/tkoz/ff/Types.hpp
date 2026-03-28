@@ -47,14 +47,13 @@ concept cPrimitiveFpType =
 template <cPrimitiveFpType NumT> class Number;
 
 /// 32 bit number type (float wrapper)
-using NumberFp32 = Number<float>;
+using Fp32 = Number<float>;
 
 /// 64 bit number type (double wrapper)
-using NumberFp64 = Number<double>;
+using Fp64 = Number<double>;
 
 /// Number types that can be used for the flame fractal rendering.
 template <typename T>
-concept cNumberType =
-    std::is_same_v<T, NumberFp32> || std::is_same_v<T, NumberFp64>;
+concept cNumberType = std::is_same_v<T, Fp32> || std::is_same_v<T, Fp64>;
 
 } // namespace tkoz::ff

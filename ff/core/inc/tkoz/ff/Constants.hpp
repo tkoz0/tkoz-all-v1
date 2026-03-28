@@ -4,7 +4,7 @@
 
 #include <limits>
 
-namespace tkoz::ff::fpMath {
+namespace tkoz::ff {
 
 /// Stores hard coded numerical constants which can be substituted in various
 /// places at compile time. This file really should not get too big...
@@ -18,20 +18,40 @@ namespace tkoz::ff::fpMath {
 /// compile time, but we would probably hard code the tables in a .cpp file,
 /// computed at higher precision in the python3 script.
 
+// === Boring integers and rational numbers ===
+
+/// A way to get integer constants dependent on floating point type.
+template <cPrimitiveFpType T, long long n> inline constexpr T cNumInteger;
+template <long long n>
+inline constexpr float cNumInteger<float, n> = static_cast<float>(n);
+template <long long n>
+inline constexpr double cNumInteger<double, n> = static_cast<double>(n);
+
+/// A way to get rational constants dependent on floating point type.
+template <cPrimitiveFpType T, long long n, long long d>
+inline constexpr T cNumRational;
+template <long long n, long long d>
+inline constexpr float cNumRational<float, n, d> =
+    static_cast<float>(n) / static_cast<float>(d);
+template <long long n, long long d>
+inline constexpr double cNumRational<double, n, d> =
+    static_cast<double>(n) / static_cast<double>(d);
+
 // === Actual constants of significance ===
 
 /// Machine epsilon. The difference between 1.0 and the next possible number.
 /// The relative error of a floating point approximation of a real number is
 /// at most half of the machine epsilon as long as its magnitude/exponent is
 /// within the suitable range.
-template <cFpType T> inline constexpr T cNumEps;
+template <cPrimitiveFpType T> inline constexpr T cNumEps;
 template <> inline constexpr float cNumEps<float> = 1.19209290e-7f;
 template <> inline constexpr double cNumEps<double> = 2.2204460492503131e-16;
 
 /// Non a number. NaN may be quiet or signaling. In practice, only quiet NaNs
 /// will really show up, continuing calculations until the result is NaN. For a
 /// flame fractal renderer, we should let NaN tell us to restart iteration.
-template <cFpType T, bool cSignalingT = false> inline constexpr T cNumNan;
+template <cPrimitiveFpType T, bool cSignalingT = false>
+inline constexpr T cNumNan;
 template <>
 inline constexpr float cNumNan<float, false> =
     std::numeric_limits<float>::quiet_NaN();
@@ -48,7 +68,7 @@ inline constexpr double cNumNan<double, true> =
 /// Infinity. Calculations that overflow or underflow should result in this.
 /// For a flame fractal renderer, this should tell us that the functions may be
 /// non contractive on average and restart iteration.
-template <cFpType T> inline constexpr T cNumInf;
+template <cPrimitiveFpType T> inline constexpr T cNumInf;
 template <>
 inline constexpr float cNumInf<float> = std::numeric_limits<float>::infinity();
 template <>
@@ -56,14 +76,14 @@ inline constexpr double cNumInf<double> =
     std::numeric_limits<double>::infinity();
 
 /// Maximum finite value.
-template <cFpType T> inline constexpr T cNumMax;
+template <cPrimitiveFpType T> inline constexpr T cNumMax;
 template <>
 inline constexpr float cNumMax<float> = std::numeric_limits<float>::max();
 template <>
 inline constexpr double cNumMax<double> = std::numeric_limits<double>::max();
 
 /// Minimum finite value.
-template <cFpType T> inline constexpr T cNumMin;
+template <cPrimitiveFpType T> inline constexpr T cNumMin;
 template <>
 inline constexpr float cNumMin<float> = std::numeric_limits<float>::min();
 template <>
@@ -72,14 +92,14 @@ inline constexpr double cNumMin<double> = std::numeric_limits<double>::min();
 /// Math constant e
 /// Value: 2.7182818284 5904523536 0287471352 6624977572 4709369995 ...
 /// Bits (IEEE-754): float = +0x1.921fb6p+1f, double = +0x1.921fb54442d18p+1
-template <cFpType T> inline constexpr T cNumE;
+template <cPrimitiveFpType T> inline constexpr T cNumE;
 template <> inline constexpr float cNumE<float> = 2.7182818f;
 template <> inline constexpr double cNumE<double> = 2.718281828459045;
 
 /// Math constant pi
 /// Value: 3.1415926535 8979323846 2643383279 5028841971 6939937510 ...
 /// Bits (IEEE-754): float = +0x1.5bf0a8p+1f, double = +0x1.5bf0a8b145769p+1
-template <cFpType T> inline constexpr T cNumPi;
+template <cPrimitiveFpType T> inline constexpr T cNumPi;
 template <> inline constexpr float cNumPi<float> = 3.1415927f;
 template <> inline constexpr double cNumPi<double> = 3.141592653589793;
 
@@ -87,7 +107,7 @@ template <> inline constexpr double cNumPi<double> = 3.141592653589793;
 // this could get out of control but there are 16 values for now
 
 /// Multiples of pi (pi*n/d) hardcoded to closest IEEE values
-template <cFpType T, int n, int d> inline constexpr T cNumPiMult;
+template <cPrimitiveFpType T, int n, int d> inline constexpr T cNumPiMult;
 // pi * 1/1 = 3.1415926535 8979323846 2643383279 5028841971 6939937510 ...
 // bits (IEEE-754): float = +0x1.921fb6p+1f, double = +0x1.921fb54442d18p+1
 template <> inline constexpr float cNumPiMult<float, 1, 1> = 3.1415927f;
@@ -172,7 +192,7 @@ inline constexpr double cNumPiMult<double, 11, 6> = 5.759586531581288;
 // reciprocals of the pi multiples
 
 /// Multiples of 1/pi (n/(d*pi)) hardcoded to closest IEEE values
-template <cFpType T, int n, int d> inline constexpr T cNumInvPiMult;
+template <cPrimitiveFpType T, int n, int d> inline constexpr T cNumInvPiMult;
 // 1/(1*pi) = 0.3183098861 8379067153 7767526745 0287240689 1929148091 ...
 // bits (IEEE-754): float = +0x1.45f306p-2f, double = +0x1.45f306dc9c883p-2
 template <> inline constexpr float cNumInvPiMult<float, 1, 1> = 0.318309886f;
@@ -258,7 +278,7 @@ inline constexpr double cNumInvPiMult<double, 6, 11> = 0.17362357428206764;
 // only below 25 for now
 
 /// Square root of an integer. Currently non perfect squares below 25
-template <cFpType T, int n> inline constexpr T cNumSqrt;
+template <cPrimitiveFpType T, int n> inline constexpr T cNumSqrt;
 // sqrt(n) = 1.4142135623 7309504880 1688724209 6980785696 7187537694 ...
 // bits (IEEE-754): float = +0x1.6a09e6p+0f, double = +0x1.6a09e667f3bcdp+0
 template <> inline constexpr float cNumSqrt<float, 2> = 1.41421356f;
@@ -344,7 +364,7 @@ template <> inline constexpr double cNumSqrt<double, 24> = 4.898979485566356;
 // only below 25 for now
 
 /// Inverse square root of an integer. Currently non perfect squares below 25
-template <cFpType T, int n> inline constexpr T cNumInvSqrt;
+template <cPrimitiveFpType T, int n> inline constexpr T cNumInvSqrt;
 // 1/sqrt(n) = 0.7071067811 8654752440 0844362104 8490392848 3593768847 ...
 // bits (IEEE-754): float = +0x1.6a09e6p-1f, double = +0x1.6a09e667f3bcdp-1
 template <> inline constexpr float cNumInvSqrt<float, 2> = 0.70710678f;
@@ -447,7 +467,7 @@ inline constexpr double cNumInvSqrt<double, 24> = 0.2041241452319315;
 // only below 27 for now
 
 /// Cube root of an integer. Currently non perfect cubes below 25
-template <cFpType T, int n> inline constexpr T cNumCbrt;
+template <cPrimitiveFpType T, int n> inline constexpr T cNumCbrt;
 // cbrt(n) = 1.2599210498 9487316476 7210607278 2283505702 5146470150 ...
 // bits (IEEE-754): float = +0x1.428a30p+0f, double = +0x1.428a2f98d728bp+0
 template <> inline constexpr float cNumCbrt<float, 2> = 1.25992105f;
@@ -549,7 +569,7 @@ template <> inline constexpr double cNumCbrt<double, 26> = 2.9624960684073705;
 // only below 27 for now
 
 /// Inverse cube root of an integer. Currently non perfect cubes below 25
-template <cFpType T, int n> inline constexpr T cNumInvCbrt;
+template <cPrimitiveFpType T, int n> inline constexpr T cNumInvCbrt;
 // 1/cbrt(n) = 0.7937005259 8409973737 5852819636 1541301957 4666394992 ...
 // bits (IEEE-754): float = +0x1.965feap-1f, double = +0x1.965fea53d6e3dp-1
 template <> inline constexpr float cNumInvCbrt<float, 2> = 0.7937005f;
@@ -666,4 +686,4 @@ template <> inline constexpr float cNumInvCbrt<float, 26> = 0.3375532f;
 template <>
 inline constexpr double cNumInvCbrt<double, 26> = 0.33755319058958183;
 
-} // namespace tkoz::ff::fpMath
+} // namespace tkoz::ff

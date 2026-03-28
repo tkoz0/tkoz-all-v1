@@ -6,12 +6,22 @@
 #include <concepts>
 #include <utility>
 
-using Fp32 = tkoz::ff::NumberFp32;
-using Fp64 = tkoz::ff::NumberFp64;
+using tkoz::ff::Fp32;
+using tkoz::ff::Fp64;
 
 // Sizes should match for these thin wrappers around float/double
 static_assert(sizeof(Fp32) == sizeof(float));
 static_assert(sizeof(Fp64) == sizeof(double));
+
+// Access/set value
+static_assert(requires(Fp32 a) {
+  { a.value() } -> std::same_as<float>;
+});
+static_assert(requires(Fp64 a) {
+  { a.value() } -> std::same_as<double>;
+});
+static_assert(requires(Fp32 a) { a.setValue(0.0f); });
+static_assert(requires(Fp64 a) { a.setValue(0.0); });
 
 // Implicit conversions allowed up to our wrapper type but not back
 // For safety, we disallow mixing float and double

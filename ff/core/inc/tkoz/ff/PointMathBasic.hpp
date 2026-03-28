@@ -1,9 +1,9 @@
 #pragma once
 
+#include <tkoz/ff/CMath.hpp>
 #include <tkoz/ff/PointData.hpp>
+#include <tkoz/ff/PointNormTags.hpp>
 #include <tkoz/ff/Types.hpp>
-#include <tkoz/ff/fpMath/CMath.hpp>
-#include <tkoz/ff/pointMath/PointNormTags.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -25,7 +25,7 @@ struct PointMathBasic {
   PointMathBasic() = delete;
 
   // left += right.
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   static constexpr inline void addEq(PointData<N, T> &left,
                                      PointData<N, T> const &right) noexcept {
     for (std::size_t i = 0; i < N; ++i) {
@@ -34,7 +34,7 @@ struct PointMathBasic {
   }
 
   // left -= right.
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   static constexpr inline void subEq(PointData<N, T> &left,
                                      PointData<N, T> const &right) noexcept {
     for (std::size_t i = 0; i < N; ++i) {
@@ -43,7 +43,7 @@ struct PointMathBasic {
   }
 
   // left *= right.
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   static constexpr inline void mulEq(PointData<N, T> &left, T right) noexcept {
     for (std::size_t i = 0; i < N; ++i) {
       left[i] *= right;
@@ -51,12 +51,14 @@ struct PointMathBasic {
   }
 
   // left /= right.
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   static constexpr inline void divEq(PointData<N, T> &left, T right) noexcept {
     if constexpr (N >= 2) {
       // Precompute 1/right and multiply instead
       // TODO is N >= 2 the right threshold?
-      mulEq(left, T{1.0} / right);
+      // The answer may differ by an ulp, but in practice the speed gain from
+      // this method is worth it for being a single ulp off sometimes.
+      mulEq(left, cNumInteger<typename T::FpType, 1> / right);
     } else {
       for (std::size_t i = 0; i < N; ++i) {
         left[i] /= right;
@@ -65,7 +67,7 @@ struct PointMathBasic {
   }
 
   // component multiply
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   static constexpr inline void
   componentMulEq(PointData<N, T> &left, PointData<N, T> const &right) noexcept {
     for (std::size_t i = 0; i < N; ++i) {
@@ -74,7 +76,7 @@ struct PointMathBasic {
   }
 
   // component divide
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   static constexpr inline void
   componentDivEq(PointData<N, T> &left, PointData<N, T> const &right) noexcept {
     for (std::size_t i = 0; i < N; ++i) {
@@ -83,29 +85,43 @@ struct PointMathBasic {
   }
 
   // dot product
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   dotProduct(PointData<N, T> const &left, PointData<N, T> const &right) noexcept
       -> T {
-    T result{0.0};
+    // This is fine for small N. For large N, we may want Kahan/pairwise
+    // summation, which may reduce error from O(N*eps) to O(log(N)*eps)
+    using F = T::FpType;
+    F result{0.0};
     for (std::size_t i = 0; i < N; ++i) {
-      result = std::fma(left[i], right[i], result);
+      result = std::fma(F{left[i]}, F{right[i]}, result);
     }
     return result;
   }
 
   // angle between vectors
   // note: this computes L2 norms as well when not assuming unit vectors
-  template <bool cAssumeUnitT, std::size_t N, cFpType T>
+  template <bool cAssumeUnitT, std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   angleBetween(PointData<N, T> left, PointData<N, T> right) noexcept -> T {
+    using F = T::FpType;
     if constexpr (N == 1) {
       // Handle 1d separately by using signs
-      return std::signbit(left.template at<0>()) ==
-                     std::signbit(right.template at<0>())
-                 ? T{0.0}
-                 : fpMath::cNumPi<T>;
+      return std::signbit(F{left.template at<0>()}) ==
+                     std::signbit(F{right.template at<0>()})
+                 ? F{0.0}
+                 : cNumPi<F>;
+    } else if constexpr (N == 2) {
+      // Special case 2d with "cross product"
+      return std::atan2(std::abs(F{cross2d(left, right)}),
+                        F{dotProduct(left, right)});
+    } else if constexpr (N == 3) {
+      // Special case 3d with cross product
+      return std::atan2(F{pNormIntCt<2>(cross3d(left, right))},
+                        F{dotProduct(left, right)});
     } else {
+      // In general, the half angle atan2 method is the best balance of speed
+      // and stability.
       if constexpr (!cAssumeUnitT) {
         T const leftNorm = pNormIntCt<2>(left);
         T const rightNorm = pNormIntCt<2>(right);
@@ -116,7 +132,8 @@ struct PointMathBasic {
       auto add = left;
       subEq(sub, right);
       addEq(add, right);
-      return T{2.0} * std::atan2(pNormIntCt<2>(sub), pNormIntCt<2>(add));
+      return cNumInteger<F, 2> *
+             std::atan2(F{pNormIntCt<2>(sub)}, F{pNormIntCt<2>(add)});
     }
 
     // Alternative formulas
@@ -129,26 +146,33 @@ struct PointMathBasic {
     // atan2(sqrt(norm(a)^2*norm(b)^2-dot(a,b)^2),dot(a,b))
   }
 
-  // 2d "cross" product
-  template <cFpType T>
+  // 2d "cross" product (the z component as if done in 3 dimensions)
+  template <cNumberType T>
   [[nodiscard]] static constexpr inline auto
   cross2d(PointData<2, T> const &left, PointData<2, T> const &right) noexcept
       -> T {
-    return (left[0] * right[1]) - (left[1] * right[0]);
+    // Use std::fma to calculate with 2 roundings instead of 3
+    // For overflow concerns, this is doable by scale down then back up
+    using F = T::FpType;
+    return std::fma(F{left[0]}, F{right[1]}, -F{left[1] * right[0]});
   }
 
   // 3d cross product
-  template <cFpType T>
+  template <cNumberType T>
   [[nodiscard]] static constexpr inline auto
   cross3d(PointData<3, T> const &left, PointData<3, T> const &right) noexcept
       -> PointData<3, T> {
-    return PointData<3, T>(((left[1] * right[2]) - (left[2] * right[1])),
-                           ((left[2] * right[0]) - (left[0] * right[2])),
-                           ((left[0] * right[1]) - (left[1] * right[0])));
+    // Use std::fma to calculate each component with 2 roundings instead of 3
+    // For overflow concerns, this is doable by scale down then back up
+    using F = T::FpType;
+    return PointData<3, T>(
+        std::fma(F{left[1]}, F{right[2]}, -F{left[2] * right[1]}),
+        std::fma(F{left[2]}, F{right[0]}, -F{left[0] * right[2]}),
+        std::fma(F{left[0]}, F{right[1]}, -F{left[1] * right[0]}));
   }
 
   // linear interpolation
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   interpolate(PointData<N, T> const &left, PointData<N, T> const &right,
               T t) noexcept -> PointData<N, T> {
@@ -165,7 +189,7 @@ struct PointMathBasic {
   }
 
   // midpoint (special case of interpolate)
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   midpoint(PointData<N, T> const &left, PointData<N, T> const &right) noexcept
       -> PointData<N, T> {
@@ -181,7 +205,7 @@ struct PointMathBasic {
   }
 
   // project onto vector in place (optionally assume onto is a unit vector)
-  template <bool cAssumeUnitT, std::size_t N, cFpType T>
+  template <bool cAssumeUnitT, std::size_t N, cNumberType T>
   static constexpr inline void
   projectOnto(PointData<N, T> &point, PointData<N, T> const &onto) noexcept {
     T scale = dot(point, onto);
@@ -194,7 +218,7 @@ struct PointMathBasic {
   }
 
   // reflect across axis in place (optionally assume axis is a unit vector)
-  template <bool cAssumeUnitT, std::size_t N, cFpType T>
+  template <bool cAssumeUnitT, std::size_t N, cNumberType T>
   static constexpr inline void
   reflectAcross(PointData<N, T> &point, PointData<N, T> const &axis) noexcept {
     T scale = T{2.0} * dot(point, axis);
@@ -207,9 +231,9 @@ struct PointMathBasic {
   }
 
   // ccw rotation in 2d plane (modifies x and y in place)
-  template <cFpType T>
+  template <cNumberType T>
   static constexpr inline void rotate2d(T &x, T &y, T angle) noexcept {
-    const auto [sinA, cosA] = fpMath::cmathSinCos(angle);
+    const auto [sinA, cosA] = cmathSinCos(angle);
     T const oldX = x;
     T const oldY = y;
     x = (oldX * cosA) - (oldY * sinA);
@@ -217,7 +241,7 @@ struct PointMathBasic {
   }
 
   // efficient radius, sine, and cosine in 2d
-  template <cFpType T>
+  template <cNumberType T>
   static constexpr inline void sinCosRad2d(T const &x, T const &y, T &outSin,
                                            T &outCos, T &outRad) noexcept {
     outRad = pNormIntCt<2>(PointData<2, T>(x, y));
@@ -227,7 +251,7 @@ struct PointMathBasic {
 
   // nicer front end vector norm interface that does not use 5 function names
   // pass an instance of PNormCt or PNormRt, calls the appropriate function
-  template <std::size_t N, cFpType T, cIsNormType NormT>
+  template <std::size_t N, cNumberType T, cIsNormType NormT>
   [[nodiscard]] static constexpr inline auto norm(PointData<N, T> const &point,
                                                   NormT norm) noexcept -> T {
     if constexpr (std::is_same_v<NormT, InfNorm>) {
@@ -265,7 +289,7 @@ struct PointMathBasic {
 
   // similar to above but for the power sums of p norms
   // power sum is not applicable to the infinity/max norm
-  template <std::size_t N, cFpType T, cIsNormType NormT>
+  template <std::size_t N, cNumberType T, cIsNormType NormT>
     requires(!std::is_same_v<NormT, InfNorm>)
   [[nodiscard]] static constexpr inline auto
   normPowerSum(PointData<N, T> const &point, NormT norm) noexcept -> T {
@@ -313,29 +337,30 @@ private:
 
   // p norm power sum (integer, compile time)
   // TODO maybe a few more special cases because std::pow is expensive
-  template <auto P, std::size_t N, cFpType T>
+  template <auto P, std::size_t N, cNumberType T>
     requires(std::is_integral_v<decltype(P)> &&
              !std::is_same_v<decltype(P), bool> && P >= decltype(P){1})
   [[nodiscard]] static constexpr inline auto
       pNormIntPowerSumCt(PointData<N, T> const &point) noexcept -> T {
-    static constexpr T cPT{P};
-    T result{0.0};
+    using F = T::FpType;
+    static constexpr F cPT{P};
+    F result{0.0};
     if constexpr (P == 1) { // L1 (taxicab)
       for (std::size_t i = 0; i < N; ++i) {
-        result += std::abs(point[i]);
+        result += std::abs(F{point[i]});
       }
     } else if constexpr (P == 2) { // L2 (euclidean)
       for (std::size_t i = 0; i < N; ++i) {
-        result = std::fma(point[i], point[i], result);
+        result = std::fma(F{point[i]}, F{point[i]}, result);
       }
     } else if constexpr (P % 2 == 0) { // Even exponent
       for (std::size_t i = 0; i < N; ++i) {
-        result += std::pow(point[i], cPT);
+        result += std::pow(F{point[i]}, cPT);
       }
     } else { // Odd exponent
       static_assert(P % 2 == 1);
       for (std::size_t i = 0; i < N; ++i) {
-        result += std::pow(std::abs(point[i]), cPT);
+        result += std::pow(std::abs(F{point[i]}), cPT);
       }
     }
     return result;
@@ -345,34 +370,36 @@ private:
   // p < 1 is not a norm, not checked
   // TODO does having special cases make sense? probably not
   // this one is meant to be more general for larger p
-  template <typename P, std::size_t N, cFpType T>
+  template <typename P, std::size_t N, cNumberType T>
     requires(std::is_integral_v<P> && !std::is_same_v<P, bool>)
   [[nodiscard]] static constexpr inline auto
   pNormIntPowerSumRt(PointData<N, T> const &point, P power) noexcept -> T {
-    T const powerT{power};
-    T result{0.0};
+    using F = T::FpType;
+    F const powerT{power};
+    F result{0.0};
     for (std::size_t i = 0; i < N; ++i) {
-      result += std::pow(std::abs(point[i]), powerT);
+      result += std::pow(std::abs(F{point[i]}), powerT);
     }
     return result;
   }
 
   // p norm (integer, compile time)
   // TODO maybe more special cases make sense since std::pow is slow
-  template <auto P, std::size_t N, cFpType T>
+  template <auto P, std::size_t N, cNumberType T>
     requires(std::is_integral_v<decltype(P)> &&
              !std::is_same_v<decltype(P), bool> && P >= 1)
   [[nodiscard]] static constexpr inline auto
   pNormIntCt(PointData<N, T> const &point) noexcept -> T {
-    static constexpr T cInvP = T{1.0} / T{P};
+    using F = T::FpType;
+    static constexpr F cInvP = F{1.0} / F{P};
     if constexpr (P == 1) {
       return pNormIntPowerSumCt<1>(point);
     } else if constexpr (P == 2) {
-      return std::sqrt(pNormIntPowerSumCt<2>(point));
+      return std::sqrt(F{pNormIntPowerSumCt<2>(point)});
     } else if constexpr (P == 3) {
-      return std::cbrt(pNormIntPowerSumCt<3>(point));
+      return std::cbrt(F{pNormIntPowerSumCt<3>(point)});
     } else {
-      return std::pow(pNormIntPowerSumCt<P>(point), cInvP);
+      return std::pow(F{pNormIntPowerSumCt<P>(point), cInvP});
     }
   }
 
@@ -380,35 +407,38 @@ private:
   // p < 1 is not a norm, not checked
   // TODO does having special cases make sense? probably not
   // this one is meant to be more general for larger p
-  template <typename P, std::size_t N, cFpType T>
+  template <typename P, std::size_t N, cNumberType T>
     requires(std::is_integral_v<P> && !std::is_same_v<P, bool>)
   [[nodiscard]] static constexpr inline auto
   pNormIntRt(PointData<N, T> const &point, P power) noexcept -> T {
-    T const cInvPower = T{1.0} / T{power};
-    return std::pow(pNormIntPowerSumRt(point, power), cInvPower);
+    using F = T::FpType;
+    F const cInvPower = F{1.0} / F{power};
+    return std::pow(F{pNormIntPowerSumRt(point, power)}, cInvPower);
   }
 
   // max/infinity norm
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   maxNorm(PointData<N, T> const &point) noexcept -> T {
-    T result{0.0};
+    using F = T::FpType;
+    F result{0.0};
     for (std::size_t i = 0; i < N; ++i) {
-      result = std::max(result, std::abs(point[i]));
+      result = std::max(result, std::abs(F{point[i]}));
     }
     return result;
   }
 
   // p norm power sum (float, compile time)
   // no special cases, use integer variants if you want an integer norm
-  template <auto P, std::size_t N, cFpType T>
+  template <auto P, std::size_t N, cNumberType T>
     requires(std::is_floating_point_v<decltype(P)> && P >= decltype(P){1.0})
   [[nodiscard]] static constexpr inline auto
       pNormFloatPowerSumCt(PointData<N, T> const &point) noexcept -> T {
-    static constexpr T cPT{P};
-    T result{0.0};
+    using F = T::FpType;
+    static constexpr F cPT{P};
+    F result{0.0};
     for (std::size_t i = 0; i < N; ++i) {
-      result += std::pow(std::abs(point[i]), cPT);
+      result += std::pow(std::abs(F{point[i]}), cPT);
     }
     return result;
   }
@@ -416,12 +446,13 @@ private:
   // p norm power sum (float, run time)
   // p < 1 is not a norm, not checked
   // no special cases, use integer variants if you want an integer norm
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   pNormFloatPowerSumRt(PointData<N, T> const &point, T power) noexcept -> T {
-    T result{0.0};
+    using F = T::FpType;
+    F result{0.0};
     for (std::size_t i = 0; i < N; ++i) {
-      result += std::pow(std::abs(point[i]), power);
+      result += std::pow(std::abs(F{point[i]}), power);
     }
     return result;
   }
@@ -429,22 +460,24 @@ private:
   // p norm (float, compile time)
   // p < 1 is not a norm
   // no special cases, use integer variants if you want an integer norm
-  template <auto P, std::size_t N, cFpType T>
+  template <auto P, std::size_t N, cNumberType T>
     requires(std::is_floating_point_v<decltype(P)> && P >= decltype(P){1.0})
   [[nodiscard]] static constexpr inline auto
       pNormFloatCt(PointData<N, T> const &point) noexcept -> T {
-    static constexpr T cInvP = T{1.0} / T{P};
-    return std::pow(pNormFloatPowerSumCt<P>(point), cInvP);
+    using F = T::FpType;
+    static constexpr F cInvP = F{1.0} / F{P};
+    return std::pow(F{pNormFloatPowerSumCt<P>(point)}, cInvP);
   }
 
   // p norm (float, run time)
   // p < 1 is not a norm, not checked
   // no special cases, use integer variants if you want an integer norm
-  template <std::size_t N, cFpType T>
+  template <std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   pNormFloatRt(PointData<N, T> const &point, T power) noexcept -> T {
-    T const invPower = T{1.0} / power;
-    return std::pow(pNormFloatPowerSumRt(point, power), invPower);
+    using F = T::FpType;
+    F const invPower = F{1.0} / F{power};
+    return std::pow(F{pNormFloatPowerSumRt(point, power)}, invPower);
   }
 };
 

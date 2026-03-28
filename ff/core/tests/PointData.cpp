@@ -13,14 +13,14 @@ namespace {
 
 template <std::size_t N>
 [[nodiscard]] inline consteval auto staticAssertPointSize() noexcept -> bool {
-  return sizeof(PointData<N, NumberFp32>) == N * sizeof(float) &&
-         sizeof(PointData<N, NumberFp64>) == N * sizeof(double);
+  return sizeof(PointData<N, Fp32>) == N * sizeof(float) &&
+         sizeof(PointData<N, Fp64>) == N * sizeof(double);
 }
 
 template <std::size_t N>
 [[nodiscard]] inline consteval auto staticAssertPointAlign() noexcept -> bool {
-  return alignof(PointData<N, NumberFp32>) == alignof(float) &&
-         alignof(PointData<N, NumberFp64>) == alignof(double);
+  return alignof(PointData<N, Fp32>) == alignof(float) &&
+         alignof(PointData<N, Fp64>) == alignof(double);
 }
 
 template <std::size_t... Ns>
@@ -43,8 +43,8 @@ static_assert(staticAssertPointAllAligns<1, 2, 3, 5, 5>());
 
 } // namespace tkoz::ff
 
-using Fp32 = tkoz::ff::NumberFp32;
-using Fp64 = tkoz::ff::NumberFp64;
+using Fp32 = tkoz::ff::Fp32;
+using Fp64 = tkoz::ff::Fp64;
 
 TEST_CREATE_FAST(ctors) {
   using tkoz::ff::PointData;
@@ -96,16 +96,16 @@ TEST_CREATE_FAST(ctors) {
 
   // From span
   {
-    float data[5] = {13.0, 21.0, 34.0, 55.0, 89.0};
+    float data[5] = {13.0f, 21.0f, 34.0f, 55.0f, 89.0f};
     std::span span(data);
     float data2[5];
     auto *point = new (data2) PointData<5, Fp32>(span);
     std::ignore = point;
-    TEST_REQUIRE_EQ(data2[0], 13.0);
-    TEST_REQUIRE_EQ(data2[1], 21.0);
-    TEST_REQUIRE_EQ(data2[2], 34.0);
-    TEST_REQUIRE_EQ(data2[3], 55.0);
-    TEST_REQUIRE_EQ(data2[4], 89.0);
+    TEST_REQUIRE_EQ(data2[0], 13.0f);
+    TEST_REQUIRE_EQ(data2[1], 21.0f);
+    TEST_REQUIRE_EQ(data2[2], 34.0f);
+    TEST_REQUIRE_EQ(data2[3], 55.0f);
+    TEST_REQUIRE_EQ(data2[4], 89.0f);
   }
 
   // From C array
@@ -196,8 +196,8 @@ TEST_CREATE_FAST(access) {
     TEST_REQUIRE_EQ(b.at(0), -10.0f);
     TEST_REQUIRE_THROW(a.at(3), std::out_of_range);
     TEST_REQUIRE_THROW(b.at(1), std::out_of_range);
-    TEST_REQUIRE_THROW_ANY(a.at(-1));
-    TEST_REQUIRE_THROW_ANY(b.at(-1));
+    TEST_REQUIRE_THROW_ANY(a.at(-1ull));
+    TEST_REQUIRE_THROW_ANY(b.at(-1ull));
     // Reassign some
     a.at(2) = 1.07;
     b.at(0) = 1.09f;
@@ -212,8 +212,8 @@ TEST_CREATE_FAST(access) {
     TEST_REQUIRE_EQ(bc.at(0), 1.09f);
     TEST_REQUIRE_THROW_ANY(ac.at(3));
     TEST_REQUIRE_THROW_ANY(bc.at(1));
-    TEST_REQUIRE_THROW(ac.at(-1), std::out_of_range);
-    TEST_REQUIRE_THROW(bc.at(-1), std::out_of_range);
+    TEST_REQUIRE_THROW(ac.at(-1ull), std::out_of_range);
+    TEST_REQUIRE_THROW(bc.at(-1ull), std::out_of_range);
   }
 
   // Element access (compile time at)
