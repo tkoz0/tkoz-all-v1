@@ -4,7 +4,7 @@ High maintainability, readability, and performance are all priorities.
 
 ## naming conventions
 
-Use `camelCaseNames` for all variable names.
+Use `camelCaseNames` for all variable and function names.
 
 Use `CapsEachWord` for class and struct names.
 
@@ -16,6 +16,7 @@ Prefixes
 - `g` for mutable global variables
 - `a` for function arguments (optional/maybe?)
 - `l` for local variables (optional/maybe?)
+- `I` for interface classes (pure virtual only, no member state)
 
 Other
 - prefix `c` and suffix `T` for non type template parameters
@@ -24,11 +25,11 @@ Other
 
 ## functions
 
-Should trailing return types be used? `auto function(args...) -> ReturnType`
+Use trailing return types: `auto function(args...) -> ReturnType`
 
 Language keyword/feature checklist
 - `explicit` use by default for single argument constructors unless implicit
-  conversion is desired
+  conversion is desired, if implicit, put `/*implicit*/` on the function
 - `inline` use for everything small that is defined in a header, although this
   may be redundant
 - `constexpr` for header defined functions that make sense to allow evaluation
@@ -46,10 +47,12 @@ Language keyword/feature checklist
   - try to delete these functions by default unless there is a good reason to
     have them
 - `virtual` for any function that can be overridden
-- `override` for any function that overrides a base member (declaration only)
+- `override` for any function that overrides a base member
+- `final` on functions occasionally if appropriate
 - `= 0` pure virtual (cannot instantiate a class with any of these)
 - `[[nodiscard]]` on any function returning a value without side effects,
   often accessor member functions
+- `[[noreturn]]` on any functions that infinite loop or unconditionally throw
 
 Other
 - pass by value and move if the class takes and stores a copy of the argument,
@@ -58,6 +61,14 @@ Other
   possible for an object to be null
 
 ## classes
+
+- `final` when appropriate, some things are not meant for subclasses
+- `/*abstract*/` label classes that contain any pure virtual functions
+- try to avoid multiple inheritance, multiple interfaces is ok
+- `class` for most object types that encapsulate functionality
+- `struct` for grouping data for convenience with no invariants
+- put visibility specifier explicitly, do not depend on class/struct default
+- prefer keeping things in minimum visibility, move up later if needed
 
 ## includes
 

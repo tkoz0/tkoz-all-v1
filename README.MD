@@ -23,6 +23,8 @@ project is questionable.
 - additional documentation separate from code files (possibly markdown)
 - explicit library export macros
 - all built binaries in the same directory?
+- setup ccache and pch
+- look into documentation alternatives (outside of headers maybe)
 
 # ideas
 
