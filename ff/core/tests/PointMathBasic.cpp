@@ -7,7 +7,10 @@
 #include <cstddef>
 #include <cstdlib>
 #include <format>
+#include <limits>
 #include <random>
+#include <type_traits>
+#include <utility>
 
 using tkoz::ff::cNumEps;
 using tkoz::ff::cNumPi;
@@ -20,12 +23,17 @@ using tkoz::ff::Number;
 using tkoz::ff::PointData;
 using tkoz::ff::PointMathBasic;
 
+namespace {
+
+///
+/// Helpers for output
+///
+
 // Convert a float/double to string which is convertible back to exact value
-template <typename T>
-  requires std::is_same_v<T, float> || std::is_same_v<T, double>
-inline auto fpString(T value) -> std::string {
-  char buf[64];
-  auto const [bufEnd, error] = std::to_chars(buf, buf + 64, value);
+template <std::floating_point T> inline auto fpString(T value) -> std::string {
+  static constexpr std::size_t cBufSize = 4 * sizeof(T);
+  char buf[cBufSize];
+  auto const [bufEnd, error] = std::to_chars(buf, buf + cBufSize, value);
   TEST_REQUIRE_EQ(error, std::errc{});
   return std::string(buf, bufEnd);
 }
@@ -62,52 +70,123 @@ template <std::size_t N, typename T>
                      pointString(expected), pointString(actual), cTypeName);
 }
 
-// Compare 2 points for equality by absolute error of corresponding components.
-template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
-[[nodiscard]] auto pointsEqCompAbs(PointData<N, T> const &actual,
-                                   PointData<N, T> const &expected, U err)
-    -> bool {
-  using F = T::FpType;
-  for (std::size_t i = 0; i < N; ++i) {
-    if (std::abs(F{actual[i] - expected[i]}) > err) [[unlikely]] {
-      TEST_MESSAGE_FAILURE(errorMessageWithNumbers(actual, expected));
-      return false;
-    }
-  }
-  return true;
+///
+/// Helpers for computing error of points and numbers
+///
+
+template <std::floating_point T> inline auto errNumAbs(T a, T b) -> T {
+  return std::abs(a - b);
 }
 
-// Compare 2 points for equality by relative error of corresponding components.
-template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
-[[nodiscard]] auto pointsEqCompRel(PointData<N, T> const &actual,
-                                   PointData<N, T> const &expected, U err)
-    -> bool {
-  using F = T::FpType;
-  for (std::size_t i = 0; i < N; ++i) {
-    if (std::abs(F{actual[i] - expected[i]}) /
-            std::max(std::abs(actual[i].value()),
-                     std::abs(expected[i].value())) >
-        err) [[unlikely]] {
-      TEST_MESSAGE_FAILURE(errorMessageWithNumbers(actual, expected));
-      return false;
-    }
-  }
-  return true;
+template <typename T> inline auto errNumAbs(T a, T b) -> T::FpType {
+  return errNumAbs(a.value(), b.value());
 }
 
-// Compare 2 points for equality by a near comparison
-template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
-[[nodiscard]] auto pointsEqCompNear(PointData<N, T> const &actual,
-                                    PointData<N, T> const &expected, U err)
-    -> bool {
+template <std::floating_point T> inline auto errNumRel(T a, T b) -> T {
+  return std::abs(a - b) / std::max(std::abs(a), std::abs(b));
+}
+
+template <typename T> inline auto errNumRel(T a, T b) -> T::FpType {
+  return errNumRel(a.value(), b.value());
+}
+
+// Compute max error by components. Returns index and error for component with
+// the largest error.
+template <std::size_t N, typename T, typename FuncT>
+  requires requires(FuncT f) {
+    {
+      f(std::declval<typename T::FpType>(), std::declval<typename T::FpType>())
+    } -> std::same_as<typename T::FpType>;
+  }
+[[nodiscard]] auto errCompTemplate(PointData<N, T> const &actual,
+                                   PointData<N, T> const &expected,
+                                   FuncT &&errFunc)
+    -> std::pair<typename T::FpType, std::size_t> {
+  using F = T::FpType;
+  F maxErr = -std::numeric_limits<F>::infinity();
+  std::size_t errInd = std::numeric_limits<std::size_t>::max();
+  for (std::size_t i = 0; i < N; ++i) {
+    F const err = std::forward<FuncT>(errFunc)(F{actual[i]}, F{expected[i]});
+    if (err > maxErr) {
+      maxErr = err;
+      errInd = i;
+    }
+  }
+  return {maxErr, errInd};
+}
+
+// Returns the maximum component absolute error and its index.
+template <std::size_t N, typename T>
+[[nodiscard]] auto errCompAbs(PointData<N, T> const &actual,
+                              PointData<N, T> const &expected)
+    -> std::pair<typename T::FpType, std::size_t> {
+  using F = T::FpType;
+  return errCompTemplate(actual, expected,
+                         [](F a, F b) -> F { return errNumAbs(a, b); });
+}
+
+// Returns the maximum component relative error and its index.
+template <std::size_t N, typename T>
+[[nodiscard]] auto errCompRel(PointData<N, T> const &actual,
+                              PointData<N, T> const &expected)
+    -> std::pair<typename T::FpType, std::size_t> {
+  using F = T::FpType;
+  return errCompTemplate(actual, expected,
+                         [](F a, F b) -> F { return errNumRel(a, b); });
+}
+
+// Returns the max norm of the difference.
+template <std::size_t N, typename T>
+[[nodiscard]] auto errNormMax(PointData<N, T> const &actual,
+                              PointData<N, T> const &expected) -> T::FpType {
+  using F = T::FpType;
+  F maxComp{0.0};
+  for (std::size_t i = 0; i < N; ++i) {
+    maxComp = std::max(maxComp, std::abs(F{actual[i] - expected[i]}));
+  }
+  return maxComp;
+}
+
+// Returns the L1 norm of the difference.
+template <std::size_t N, typename T>
+[[nodiscard]] auto errNormL1(PointData<N, T> const &actual,
+                             PointData<N, T> const &expected) -> T::FpType {
+  using F = T::FpType;
+  F compSum{0.0};
+  for (std::size_t i = 0; i < N; ++i) {
+    compSum += std::abs(F{actual[i] - expected[i]});
+  }
+  return compSum;
+}
+
+// Returns the squared L2 norm of the difference.
+// Compare this to the tolerance squared.
+template <std::size_t N, typename T>
+[[nodiscard]] auto errNormL2squared(PointData<N, T> const &actual,
+                                    PointData<N, T> const &expected)
+    -> T::FpType {
+  using F = T::FpType;
+  F dotSum{0.0};
+  for (std::size_t i = 0; i < N; ++i) {
+    F const diff = F{actual[i] - expected[i]};
+    dotSum = std::fma(diff, diff, dotSum);
+  }
+  return dotSum;
+}
+
+///
+/// Helpers for checking point equality
+///
+
+// Returns true if each component passes the provided error check function.
+// If any component fails, adds a test error message with the two point values.
+template <std::size_t N, typename T, typename FuncT>
+[[nodiscard]] auto isEqCompTemplate(PointData<N, T> const &actual,
+                                    PointData<N, T> const &expected,
+                                    FuncT &&checkFunc) -> bool {
   using F = T::FpType;
   for (std::size_t i = 0; i < N; ++i) {
-    if (std::abs(F{actual[i] - expected[i]}) >
-        err * std::max(F{1.0}, std::max(std::abs(actual[i].value()),
-                                        std::abs(expected[i].value()))))
+    if (!std::forward<FuncT>(checkFunc)(F{actual[i]}, F{expected[i]}, i))
         [[unlikely]] {
       TEST_MESSAGE_FAILURE(errorMessageWithNumbers(actual, expected));
       return false;
@@ -116,86 +195,109 @@ template <std::size_t N, typename T, typename U>
   return true;
 }
 
-// Compare 2 points for equality with both relative and absolute tolerances
-template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
-[[nodiscard]] auto pointsEqCompClose(PointData<N, T> const &actual,
-                                     PointData<N, T> const &expected, U relErr,
-                                     U absErr) {
-  using F = T::FpType;
-  for (std::size_t i = 0; i < N; ++i) {
-    if (std::abs(F{actual[i] - expected[i]}) >
-        std::max(relErr *
-                     std::max(std::abs(F{actual[i]}), std::abs(F{expected[i]})),
-                 absErr)) [[unlikely]] {
-      TEST_MESSAGE_ALWAYS(errorMessageWithNumbers(actual, expected));
-      return false;
-    }
-  }
-  return true;
-}
-
-// Compare 2 points for equality by max norm of their difference.
-template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
-[[nodiscard]] auto pointsEqMax(PointData<N, T> const &actual,
-                               PointData<N, T> const &expected, U err) -> bool {
-  using F = T::FpType;
-  F maxComp{0.0};
-  for (std::size_t i = 0; i < N; ++i) {
-    maxComp = std::max(maxComp, std::abs(F{actual[i] - expected[i]}));
-  }
-  if (maxComp > err) [[unlikely]] {
-    TEST_MESSAGE_FAILURE(errorMessageWithNumbers(actual, expected));
-  }
-  return maxComp <= err;
-}
-
-// Compare 2 points for equality by L1 norm of their difference.
-template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
-[[nodiscard]] auto pointsEqL1(PointData<N, T> const &actual,
-                              PointData<N, T> const &expected, U err) -> bool {
-  using F = T::FpType;
-  F compSum{0.0};
-  for (std::size_t i = 0; i < N; ++i) {
-    compSum += std::abs(F{actual[i] - expected[i]});
-  }
-  if (compSum > err) [[unlikely]] {
-    TEST_MESSAGE_FAILURE(errorMessageWithNumbers(actual, expected));
-  }
-  return compSum <= err;
-}
-
-// Compare 2 points for equality by magnitude of their difference (euclidean).
-template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
-[[nodiscard]] auto pointsEqL2(PointData<N, T> const &actual,
-                              PointData<N, T> const &expected, U err) -> bool {
-  using F = T::FpType;
-  F dotSum{0.0};
-  for (std::size_t i = 0; i < N; ++i) {
-    F const diff = F{actual[i] - expected[i]};
-    dotSum = std::fma(diff, diff, dotSum);
-  }
-  if (dotSum > err * err) [[unlikely]] {
-    TEST_MESSAGE_FAILURE(errorMessageWithNumbers(actual, expected));
-  }
-  return dotSum <= err * err;
-}
-
-// Compare 2 points for exact equality
+// Returns true if each component is exactly equal.
+// If any are not, adds a test error message.
 template <std::size_t N, typename T>
-[[nodiscard]] auto pointsEqExact(PointData<N, T> const &actual,
-                                 PointData<N, T> const &expected) -> bool {
-  for (std::size_t i = 0; i < N; ++i) {
-    if (actual[i] != expected[i]) [[unlikely]] {
-      TEST_MESSAGE_FAILURE(errorMessageWithNumbers(actual, expected));
-      return false;
-    }
-  }
-  return true;
+[[nodiscard]] auto isEqExact(PointData<N, T> const &actual,
+                             PointData<N, T> const &expected) -> bool {
+  using F = T::FpType;
+  return isEqCompTemplate(actual, expected,
+                          [](F a, F b, std::size_t i) -> bool {
+                            std::ignore = i;
+                            return a == b;
+                          });
 }
+
+// Returns true if each component passes the required absolute tolerance.
+// If any component fails, adds a test error message.
+template <std::size_t N, typename T, typename U>
+  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
+[[nodiscard]] auto isEqCompAbs(PointData<N, T> const &actual,
+                               PointData<N, T> const &expected, U tol) -> bool {
+  using F = T::FpType;
+  return isEqCompTemplate(
+      actual, expected, [tol](F a, F b, std::size_t i) -> bool {
+        F const err = errNumAbs(a, b);
+        if (err > tol) [[unlikely]] {
+          TEST_MESSAGE_FAILURE(
+              std::format("At index {}: absolute error = {} (tolerance = {})",
+                          i, fpString(err), fpString(tol)));
+          return false;
+        }
+        return true;
+      });
+}
+
+// Returns true if each component passes the required relative tolerance.
+// If any component fails, adds a test error message.
+template <std::size_t N, typename T, typename U>
+  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
+[[nodiscard]] auto isEqCompRel(PointData<N, T> const &actual,
+                               PointData<N, T> const &expected, U tol) -> bool {
+  using F = T::FpType;
+  return isEqCompTemplate(
+      actual, expected, [tol](F a, F b, std::size_t i) -> bool {
+        F const err = errNumRel(a, b);
+        if (err > tol) [[unlikely]] {
+          TEST_MESSAGE_FAILURE(
+              std::format("At index {}: relative error = {} (tolerance = {})",
+                          i, fpString(err), fpString(tol)));
+          return false;
+        }
+        return true;
+      });
+}
+
+// Returns true if each component passes the required near test.
+// This tests both absolute and relative error with a single tolerance.
+// If any component fails, adds a test error message.
+template <std::size_t N, typename T, typename U>
+  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
+[[nodiscard]] auto isEqCompNear(PointData<N, T> const &actual,
+                                PointData<N, T> const &expected, U tol)
+    -> bool {
+  using F = T::FpType;
+  return isEqCompTemplate(
+      actual, expected, [tol](F a, F b, std::size_t i) -> bool {
+        F const absErr = errNumAbs(a, b);
+        F const relErr = errNumRel(a, b);
+        if (absErr > tol && relErr > tol) [[unlikely]] {
+          TEST_MESSAGE_FAILURE(std::format(
+              "At index {}: absolute error = {}, "
+              "relative error = {} (tolerance = {})",
+              i, fpString(absErr), fpString(relErr), fpString(tol)));
+          return false;
+        }
+        return true;
+      });
+}
+
+// Returns true if each component passes the required close test.
+// This test uses separate tolerances for absolute and relative errors.
+// If any component fails, adds a test error message.
+template <std::size_t N, typename T, typename U>
+  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
+[[nodiscard]] auto isEqCompClose(PointData<N, T> const &actual,
+                                 PointData<N, T> const &expected, U relTol,
+                                 U absTol) -> bool {
+  using F = T::FpType;
+  return isEqCompTemplate(
+      actual, expected, [relTol, absTol](F a, F b, std::size_t i) -> bool {
+        F const relErr = errNumRel(a, b);
+        F const absErr = errNumAbs(a, b);
+        if (relErr > relTol && absErr > absTol) [[unlikely]] {
+          TEST_MESSAGE_FAILURE(
+              std::format("At index {}: absolute error = {}, "
+                          "relative error = {} (absTol = {}, relTol = {})",
+                          i, fpString(absErr), fpString(relErr),
+                          fpString(absTol), fpString(relTol)));
+          return false;
+        }
+        return true;
+      });
+}
+
+} // namespace
 
 ///
 /// Manually created tests
@@ -210,14 +312,14 @@ TEST_CREATE_FAST(addEqManual1) {
     PointData<3, Fp32> const b(4.0f, 5.0f, 6.0f);
     PointMathBasic::addEq(a, b);
     PointData<3, Fp32> const c(5.0f, 7.0f, 9.0f);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errF));
+    TEST_REQUIRE(isEqCompNear(a, c, errF));
   }
   {
     PointData<4, Fp64> a(3.1, 3.2, 3.3, -2.5);
     PointData<4, Fp64> const b(1.7, 1.8, 1.9, -3.5);
     PointMathBasic::addEq(a, b);
     PointData<4, Fp64> const c(4.8, 5.0, 5.2, -6.0);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errD));
+    TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
   {
     PointData<1, Fp64> a(3.14);
@@ -230,14 +332,14 @@ TEST_CREATE_FAST(addEqManual1) {
     PointData<6, Fp32> const b(1e-10f, 1e-10f, -6.8f, -2e21f, -4.6e23f, 2.72f);
     PointMathBasic::addEq(a, b);
     PointData<6, Fp32> const c(1.5f, -6.25f, 7.9f, -3e21f, 1.1e23f, -0.42f);
-    TEST_REQUIRE(pointsEqCompNear(a, c, 10.0f * errF));
+    TEST_REQUIRE(isEqCompNear(a, c, 10.0f * errF));
   }
   {
     PointData<2, Fp64> a(2.0 + 5e-16, 3.0 - 8e-16);
     PointData<2, Fp64> const b(-2.0, -3.0);
     PointMathBasic::addEq(a, b);
     PointData<2, Fp64> const c(0.0, 0.0);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errD));
+    TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
 }
 
@@ -250,28 +352,28 @@ TEST_CREATE_FAST(subEqManual1) {
     PointData<5, Fp64> const b(70.0, 80.0, 90.0, 100.0, 110.0);
     PointMathBasic::subEq(a, b);
     PointData<5, Fp64> const c(-10.0, -30.0, -50.0, -70.0, -90.0);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errD));
+    TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
   {
     PointData<1, Fp32> a(1.0000001f);
     PointData<1, Fp32> const b(1.0f);
     PointMathBasic::subEq(a, b);
     PointData<1, Fp32> const c(0.0f);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errF));
+    TEST_REQUIRE(isEqCompNear(a, c, errF));
   }
   {
     PointData<3, Fp64> a(1.19, 2.21, 3.23);
     PointData<3, Fp64> const b(-5.16, 2.73, 0.91);
     PointMathBasic::subEq(a, b);
     PointData<3, Fp64> const c(6.35, -0.52, 2.32);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errD));
+    TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
   {
     PointData<2, Fp32> a(1.0000001f, 0.9999999f);
     PointData<2, Fp32> const b(1.0f, 1.0f);
     PointMathBasic::subEq(a, b);
     PointData<2, Fp32> const c(0.0f, 0.0f);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errF));
+    TEST_REQUIRE(isEqCompNear(a, c, errF));
   }
 }
 
@@ -282,13 +384,13 @@ TEST_CREATE_FAST(mulEqManual1) {
     PointData<3, Fp64> a(1.4, 3.7, 5.9);
     PointMathBasic::mulEq(a, Fp64{3.0});
     PointData<3, Fp64> const b(4.2, 11.1, 17.7);
-    TEST_REQUIRE(pointsEqCompNear(a, b, errD));
+    TEST_REQUIRE(isEqCompNear(a, b, errD));
   }
   {
     PointData<2, Fp32> a(-3.6f, 6.3f);
     PointMathBasic::mulEq(a, Fp32{-0.33333333f});
     PointData<2, Fp32> const b(1.2f, -2.1f);
-    TEST_REQUIRE(pointsEqCompNear(a, b, errF));
+    TEST_REQUIRE(isEqCompNear(a, b, errF));
   }
 }
 
@@ -299,13 +401,13 @@ TEST_CREATE_FAST(divEqManual1) {
     PointData<3, Fp32> a(-1.5f, 1.2f, 2.0f);
     PointMathBasic::divEq(a, Fp32{-0.2f});
     PointData<3, Fp32> const b(7.5f, -6.0f, -10.0f);
-    TEST_REQUIRE(pointsEqCompNear(a, b, errF));
+    TEST_REQUIRE(isEqCompNear(a, b, errF));
   }
   {
     PointData<2, Fp64> a(-1.65, 3.3);
     PointMathBasic::divEq(a, Fp64{1.1});
     PointData<2, Fp64> const b(-1.5, 3.0);
-    TEST_REQUIRE(pointsEqCompNear(a, b, errD));
+    TEST_REQUIRE(isEqCompNear(a, b, errD));
   }
 }
 
@@ -317,7 +419,7 @@ TEST_CREATE_FAST(compMulEqManual1) {
     PointData<7, Fp64> const b(-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0);
     PointMathBasic::componentMulEq(a, b);
     PointData<7, Fp64> const c(8.0, 3.0, 0.0, -1.0, 0.0, 3.0, 8.0);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errD));
+    TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
 }
 
@@ -329,7 +431,7 @@ TEST_CREATE_FAST(compDivEqManual1) {
     PointData<5, Fp32> const b(1.0f, 2.0f, 3.0f, 4.0f, 5.0f);
     PointMathBasic::componentDivEq(a, b);
     PointData<5, Fp32> const c(-2.0f, -0.5f, 0.0f, 0.25f, 0.4f);
-    TEST_REQUIRE(pointsEqCompNear(a, c, errF));
+    TEST_REQUIRE(isEqCompNear(a, c, errF));
   }
 }
 
@@ -418,25 +520,25 @@ TEST_CREATE_FAST(cross3dManual1) {
     PointData<3, Fp64> const a(1.7, 0.0, 0.8);
     PointData<3, Fp64> const b(0.8, 0.0, 1.7);
     PointData<3, Fp64> const c(0.0, -2.25, 0.0);
-    TEST_REQUIRE(pointsEqCompNear(PointMathBasic::cross3d(a, b), c, errD));
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::cross3d(a, b), c, errD));
   }
   {
     PointData<3, Fp32> const a(-1.0f, -2.0f, -3.0f);
     PointData<3, Fp32> const b(1.5f, -2.5f, -3.5f);
     PointData<3, Fp32> const c(-0.5f, -8.0f, 5.5f);
-    TEST_REQUIRE(pointsEqCompNear(PointMathBasic::cross3d(a, b), c, errF));
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::cross3d(a, b), c, errF));
   }
   {
     PointData<3, Fp32> const a(-4.0f, 4.3f, 0.0f);
     PointData<3, Fp32> const b(-2.3f, -2.0f, 0.0f);
     PointData<3, Fp32> const c(0.0f, 0.0f, 17.89f);
-    TEST_REQUIRE(pointsEqCompNear(PointMathBasic::cross3d(a, b), c, errF));
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::cross3d(a, b), c, errF));
   }
   {
     PointData<3, Fp64> const a(3.0, -4.0, 5.0);
     PointData<3, Fp64> const b(-11.0, 12.0, -13.0);
     PointData<3, Fp64> const c(-8.0, -16.0, -8.0);
-    TEST_REQUIRE(pointsEqCompNear(PointMathBasic::cross3d(a, b), c, errD));
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::cross3d(a, b), c, errD));
   }
 }
 
@@ -473,6 +575,8 @@ TEST_CREATE_FAST(cross3dManual1) {
 ///
 /// Randomized testing
 ///
+
+namespace {
 
 template <std::size_t cDimT, typename NumT, typename FuncT>
   requires std::is_same_v<NumT, Fp32> || std::is_same_v<NumT, Fp64>
@@ -581,6 +685,8 @@ void runRandomTestsAllParams(std::size_t seed, std::size_t trials,
       rng, trials, std::forward<FuncT>(testFunc));
 }
 
+} // namespace
+
 TEST_CREATE_FAST(addEqRandom1) {
   runRandomTestsAllParams<1, 10>(
       42 /*seed*/, 500 /*trials*/,
@@ -592,7 +698,7 @@ TEST_CREATE_FAST(addEqRandom1) {
         }
         PointMathBasic::addEq(a, b);
         // Should be exactly add parallel components
-        return pointsEqExact(a, c);
+        return isEqExact(a, c);
       });
 }
 
@@ -607,7 +713,7 @@ TEST_CREATE_FAST(subEqRandom1) {
         }
         PointMathBasic::subEq(a, b);
         // Should be exactly subtract parallel components
-        return pointsEqExact(a, c);
+        return isEqExact(a, c);
       });
 }
 
@@ -621,7 +727,7 @@ TEST_CREATE_FAST(mulEqRandom1) {
         }
         PointMathBasic::mulEq(a, b);
         // Should be exactly multiply by the constant b
-        return pointsEqExact(a, c);
+        return isEqExact(a, c);
       });
 }
 
@@ -635,7 +741,7 @@ TEST_CREATE_FAST(divEqRandom1) {
         }
         PointMathBasic::divEq(a, b);
         // We may actually multiply 1/b for performance so approx compare
-        return pointsEqCompRel(a, c, cNumEps<typename T::FpType>);
+        return isEqCompRel(a, c, cNumEps<typename T::FpType>);
       });
 }
 
@@ -650,7 +756,7 @@ TEST_CREATE_FAST(compMulEqRandom1) {
         }
         PointMathBasic::componentMulEq(a, b);
         // Should be exactly multiplied parallel components
-        return pointsEqExact(a, c);
+        return isEqExact(a, c);
       });
 }
 
@@ -665,55 +771,86 @@ TEST_CREATE_FAST(compDivEqRandom1) {
         }
         PointMathBasic::componentDivEq(a, b);
         // Should be exactly divided parallel components
-        return pointsEqExact(a, c);
+        return isEqExact(a, c);
       });
 }
 
 // Enable this macro to also write error maximums in test output
 // This keeps track of the minimum relative/absolute errors needed to pass
-#define WRITE_MAX_ERR
+// #define WRITE_MAX_ERR
+static constexpr bool cCalcMaxErr = true;
 
-#ifdef WRITE_MAX_ERR
-#define DECLARE_MAX_ERR_VARS                                                   \
-  static float maxRelErrF = 0.0f;                                              \
-  static double maxRelErrD = 0.0;                                              \
-  static float maxAbsErrF = 0.0f;                                              \
-  static double maxAbsErrD = 0.0;
-#define UPDATE_MAX_ERR_VARS(var1, var2)                                        \
-  F const theRelErr =                                                          \
-      std::abs(var1 - var2) / std::max(std::abs(var1), std::abs(var2));        \
-  F const theAbsErr = std::abs(var1 - var2);                                   \
-  if constexpr (std::is_same_v<F, float>) {                                    \
-    if (theRelErr <= theAbsErr) {                                              \
-      maxRelErrF = std::max(maxRelErrF, theRelErr);                            \
-    }                                                                          \
-    if (theAbsErr <= theRelErr) {                                              \
-      maxAbsErrF = std::max(maxAbsErrF, theAbsErr);                            \
-    }                                                                          \
-  } else if constexpr (std::is_same_v<F, double>) {                            \
-    if (theRelErr <= theAbsErr) {                                              \
-      maxRelErrD = std::max(maxRelErrD, theRelErr);                            \
-    }                                                                          \
-    if (theAbsErr <= theRelErr) {                                              \
-      maxAbsErrD = std::max(maxAbsErrD, theAbsErr);                            \
-    }                                                                          \
-  } else {                                                                     \
-    static_assert(false);                                                      \
+// Storage for the maximum relative and absolute errors.
+// This is intended for a close check with both types of tolerance.
+// Error amounts are only counted if they fit the tolerance.
+// Client code is responsible for failing if both fail the tolerance checks.
+struct MaxErrs {
+  float mMaxRelF = 0.0f;
+  float mMaxAbsF = 0.0f;
+  double mMaxRelD = 0.0;
+  double mMaxAbsD = 0.0;
+
+  template <typename T> inline void updateRel(T relErr, T relTol) noexcept {
+    if constexpr (!cCalcMaxErr) {
+      return;
+    }
+    if (relErr > relTol) {
+      return;
+    }
+    if constexpr (std::is_same_v<T, float>) {
+      mMaxRelF = std::max(mMaxRelF, relErr);
+    } else if constexpr (std::is_same_v<T, double>) {
+      mMaxRelD = std::max(mMaxRelD, relErr);
+    } else {
+      static_assert(false);
+    }
   }
-#define MESSAGE_MAX_ERR_VARS                                                   \
-  TEST_MESSAGE_ALWAYS(                                                         \
-      std::format("maxRelErrF = {}", fpStringAndEps(maxRelErrF)));             \
-  TEST_MESSAGE_ALWAYS(                                                         \
-      std::format("maxRelErrD = {}", fpStringAndEps(maxRelErrD)));             \
-  TEST_MESSAGE_ALWAYS(                                                         \
-      std::format("maxAbsErrF = {}", fpStringAndEps(maxAbsErrF)));             \
-  TEST_MESSAGE_ALWAYS(                                                         \
-      std::format("maxAbsErrD = {}", fpStringAndEps(maxAbsErrD)));
-#else
-#define DECLARE_MAX_ERR_VARS
-#define UPDATE_MAX_ERR_VARS(var1, var2)
-#define MESSAGE_MAX_ERR_VARS
-#endif
+
+  template <typename T> inline void updateAbs(T absErr, T absTol) noexcept {
+    if constexpr (!cCalcMaxErr) {
+      return;
+    }
+    if (absErr > absTol) {
+      return;
+    }
+    if constexpr (std::is_same_v<T, float>) {
+      mMaxAbsF = std::max(mMaxAbsF, absErr);
+    } else if constexpr (std::is_same_v<T, double>) {
+      mMaxAbsD = std::max(mMaxAbsD, absErr);
+    } else {
+      static_assert(false);
+    }
+  }
+
+  template <typename T>
+  inline void update(T relErr, T absErr, T relTol, T absTol) noexcept {
+    updateRel(relErr, relTol);
+    updateAbs(absErr, absTol);
+  }
+
+  inline void reset() noexcept {
+    mMaxRelF = mMaxAbsF = 0.0f;
+    mMaxRelD = mMaxAbsD = 0.0;
+  }
+
+  inline void print() const {
+    if constexpr (!cCalcMaxErr) {
+      return;
+    }
+    auto const fpStringAndEps = []<typename T>(T v) -> std::string {
+      return std::format("{} ({} * eps)", fpString(v),
+                         fpString(v / cNumEps<T>));
+    };
+    TEST_MESSAGE_ALWAYS(
+        std::format("maxRelErrF = {}", fpStringAndEps(mMaxRelF)));
+    TEST_MESSAGE_ALWAYS(
+        std::format("maxRelErrD = {}", fpStringAndEps(mMaxRelD)));
+    TEST_MESSAGE_ALWAYS(
+        std::format("maxAbsErrF = {}", fpStringAndEps(mMaxAbsF)));
+    TEST_MESSAGE_ALWAYS(
+        std::format("maxAbsErrD = {}", fpStringAndEps(mMaxAbsD)));
+  }
+};
 
 // For curiosity, we try to make somewhat tight tolerances for both GCC/Clang
 // It's not easy to explain the compiler differences. In practice, prefer a
@@ -729,12 +866,12 @@ template <typename T>
 }
 
 TEST_CREATE_FAST(dotProductRandom1) {
-  DECLARE_MAX_ERR_VARS
+  MaxErrs errs;
 
   runRandomTestsAllParams<1, 10>(
       42 /*seed*/, 500 /*trials*/,
-      []<std::size_t N, typename T>(PointData<N, T> a,
-                                    PointData<N, T> b) -> bool {
+      [&errs]<std::size_t N, typename T>(PointData<N, T> a,
+                                         PointData<N, T> b) -> bool {
         using F = T::FpType;
         F c{0.0};
         for (std::size_t i = 0; i < N; ++i) {
@@ -753,36 +890,35 @@ TEST_CREATE_FAST(dotProductRandom1) {
 #error "did not write this with a tolerance for other compilers"
 #endif
 
-        bool const passRel =
-            std::abs(c - d) <= relTol * std::max(std::abs(c), std::abs(d));
-        bool const passAbs = std::abs(c - d) <= absTol;
-        bool const result = passRel || passAbs;
+        F const relErr = errNumRel(c, d);
+        F const absErr = errNumAbs(c, d);
+        errs.update(relErr, absErr, relTol, absTol);
+        bool const pass = relErr <= relTol || absErr <= absTol;
 
-        UPDATE_MAX_ERR_VARS(c, d)
-
-        if (!result) [[unlikely]] {
-          TEST_MESSAGE_ALWAYS(std::format(
-              "Simple no FMA for comparing: {}, "
-              "PointMathBasic: {}, "
-              "relative error: {}, "
-              "absolute error: {}",
-              fpString(c), fpString(d),
-              fpString(std::abs(c - d) / std::max(std::abs(c), std::abs(d))),
-              fpString(std::abs(c - d))));
+        if (!pass) [[unlikely]] {
+          TEST_MESSAGE_ALWAYS(std::format("Simple no FMA for comparing: {}, "
+                                          "PointMathBasic: {}, "
+                                          "relative error: {}, "
+                                          "absolute error: {}, "
+                                          "relative tolerance: {}, "
+                                          "absolute tolerance: {}",
+                                          fpString(c), fpString(d),
+                                          fpString(relErr), fpString(absErr),
+                                          fpString(relTol), fpString(absTol)));
         }
-        return result;
+        return pass;
       });
 
-  MESSAGE_MAX_ERR_VARS
+  errs.print();
 }
 
 TEST_CREATE_FAST(angleBetweenRandom1) {
-  DECLARE_MAX_ERR_VARS
+  MaxErrs errs;
 
   runRandomTestsAllParams<1, 10>(
       42 /*seed*/, 500 /*trials*/,
-      []<std::size_t N, typename T>(PointData<N, T> a,
-                                    PointData<N, T> b) -> bool {
+      [&errs]<std::size_t N, typename T>(PointData<N, T> a,
+                                         PointData<N, T> b) -> bool {
         // Test with basic acos method, but handle 1d separately
         using F = T::FpType;
         if constexpr (N == 1) {
@@ -829,14 +965,13 @@ TEST_CREATE_FAST(angleBetweenRandom1) {
 #else
 #error "did not write this with a tolerance for other compilers"
 #endif
-          bool const passRel =
-              std::abs(c - d) <= relTol * std::max(std::abs(c), std::abs(d));
-          bool const passAbs = std::abs(c - d) <= absTol;
-          bool const result = passRel || passAbs;
 
-          UPDATE_MAX_ERR_VARS(c, d)
+          F const relErr = errNumRel(c, d);
+          F const absErr = errNumAbs(c, d);
+          errs.update(relErr, absErr, relTol, absTol);
+          bool const pass = relErr <= relTol || absErr <= absTol;
 
-          if (!result) [[unlikely]] {
+          if (!pass) [[unlikely]] {
             TEST_MESSAGE_ALWAYS(std::format(
                 "Simple acos for checking: {}, "
                 "PointMathBasic: {}, "
@@ -844,24 +979,23 @@ TEST_CREATE_FAST(angleBetweenRandom1) {
                 "absolute error: {}, "
                 "relative tolerance: {}, "
                 "absolute tolerance: {}",
-                fpString(c), fpString(d),
-                fpString(std::abs(c - d) / std::max(std::abs(c), std::abs(d))),
-                fpString(std::abs(c - d)), fpString(relTol), fpString(absTol)));
+                fpString(c), fpString(d), fpString(relErr), fpString(absErr),
+                fpString(relTol), fpString(absTol)));
           }
-          return result;
+          return pass;
         }
       });
 
-  MESSAGE_MAX_ERR_VARS
+  errs.print();
 }
 
 TEST_CREATE_FAST(angleBetweenRandom2) {
-  DECLARE_MAX_ERR_VARS
+  MaxErrs errs;
 
   runRandomTestsAllParams<1, 10>(
       42 /*seed*/, 500 /*trials*/,
-      []<std::size_t N, typename T>(PointData<N, T> a,
-                                    PointData<N, T> b) -> bool {
+      [&errs]<std::size_t N, typename T>(PointData<N, T> a,
+                                         PointData<N, T> b) -> bool {
         // Test with something more numerically stable
         using F = T::FpType;
         F const dot = F{PointMathBasic::dotProduct(a, b)};
@@ -885,15 +1019,13 @@ TEST_CREATE_FAST(angleBetweenRandom2) {
 #error "did not write this with a tolerance for other compilers"
 #endif
 
-        bool const passRel =
-            std::abs(v - dot) <= relTol * std::max(std::abs(v), std::abs(dot));
-        bool const passAbs = std::abs(v - dot) <= absTol;
-        bool const result = passRel || passAbs;
-
-        UPDATE_MAX_ERR_VARS(v, dot)
+        F const relErr = errNumRel(v, dot);
+        F const absErr = errNumAbs(v, dot);
+        errs.update(relErr, absErr, relTol, absTol);
+        bool const pass = relErr <= relTol || absErr <= absTol;
 
         // Allow error tolerance to go up near pi/2 where dot product is near 0
-        if (!result) [[unlikely]] {
+        if (!pass) [[unlikely]] {
           TEST_MESSAGE_ALWAYS(std::format(
               "Dot product: {}, "
               "angle: {}, "
@@ -902,24 +1034,22 @@ TEST_CREATE_FAST(angleBetweenRandom2) {
               "absolute error: {}, "
               "relative tolerance: {}, "
               "absolute tolerance: {}",
-              fpString(dot), fpString(angle), fpString(v),
-              fpString(std::abs(v - dot) /
-                       std::max(std::abs(v), std::abs(dot))),
-              fpString(std::abs(v - dot)), fpString(relTol), fpString(absTol)));
+              fpString(dot), fpString(angle), fpString(v), fpString(relErr),
+              fpString(absErr), fpString(relTol), fpString(absTol)));
         }
-        return result;
+        return pass;
       });
 
-  MESSAGE_MAX_ERR_VARS
+  errs.print();
 }
 
 TEST_CREATE_FAST(cross2dRandom1) {
-  DECLARE_MAX_ERR_VARS
+  MaxErrs errs;
 
   std::mt19937_64 rng(42 /*seed*/);
 
-  auto const func = []<std::size_t N, typename T>(PointData<N, T> a,
-                                                  PointData<N, T> b) -> bool {
+  auto const func = [&errs]<std::size_t N, typename T>(
+                        PointData<N, T> a, PointData<N, T> b) -> bool {
     static_assert(N == 2);
     using F = T::FpType;
     F const c = F{(a[0] * b[1]) - (a[1] * b[0])};
@@ -936,39 +1066,38 @@ TEST_CREATE_FAST(cross2dRandom1) {
 #error "did not write this with a tolerance for other compilers"
 #endif
 
-    bool const passRel =
-        std::abs(c - d) <= relTol * std::max(std::abs(c), std::abs(d));
-    bool const passAbs = std::abs(c - d) <= absTol;
-    bool const result = passRel || passAbs;
+    F const relErr = errNumRel(c, d);
+    F const absErr = errNumAbs(c, d);
+    errs.update(relErr, absErr, relTol, absTol);
+    bool const pass = relErr <= relTol || absErr <= absTol;
 
-    UPDATE_MAX_ERR_VARS(c, d);
-
-    if (!result) [[unlikely]] {
-      TEST_MESSAGE_ALWAYS(std::format(
-          "Simple check: {}, "
-          "PointMathBasic: {}, "
-          "relative error: {}, "
-          "absolute error: {}",
-          fpString(c), fpString(d),
-          fpString(std::abs(c - d) / std::max(std::abs(c), std::abs(d))),
-          fpString(std::abs(c - d))));
+    if (!pass) [[unlikely]] {
+      TEST_MESSAGE_ALWAYS(std::format("Simple check: {}, "
+                                      "PointMathBasic: {}, "
+                                      "relative error: {}, "
+                                      "absolute error: {}, "
+                                      "relative tolerance: {}, "
+                                      "absolute tolerance: {}",
+                                      fpString(c), fpString(d),
+                                      fpString(relErr), fpString(absErr),
+                                      fpString(relTol), fpString(absTol)));
     }
-    return result;
+    return pass;
   };
 
   runRandomTests<2, Fp32>(rng, 500 /*numTrials*/, func);
   runRandomTests<2, Fp64>(rng, 500 /*numTrials*/, func);
 
-  MESSAGE_MAX_ERR_VARS
+  errs.print();
 }
 
 TEST_CREATE_FAST(cross3dRandom1) {
-  // DECLARE_MAX_ERR_VARS
+  MaxErrs errs;
 
   std::mt19937_64 rng(42 /*seed*/);
 
-  auto const func = []<std::size_t N, typename T>(PointData<N, T> a,
-                                                  PointData<N, T> b) -> bool {
+  auto const func = [&errs]<std::size_t N, typename T>(
+                        PointData<N, T> a, PointData<N, T> b) -> bool {
     static_assert(N == 3);
     using F = T::FpType;
     PointData<N, T> const c((a[1] * b[2]) - (a[2] * b[1]),
@@ -987,19 +1116,28 @@ TEST_CREATE_FAST(cross3dRandom1) {
 #error "did not write this with a tolerance for other compilers"
 #endif
 
-    bool const result = pointsEqCompClose(c, d, relTol, absTol);
-
-    if (!result) [[unlikely]] {
-      TEST_MESSAGE_ALWAYS(std::format("Simple check: {}, "
-                                      "PointMathBasic: {}",
-                                      pointString(c), pointString(d)));
+    bool const pass = isEqCompClose(c, d, relTol, absTol);
+    if constexpr (cCalcMaxErr) {
+      auto [relErr, iRel] = errCompRel(c, d);
+      auto [absErr, iAbs] = errCompAbs(c, d);
+      std::ignore = iRel;
+      std::ignore = iAbs;
+      errs.update(relErr, absErr, relTol, absTol);
     }
 
-    return result;
+    if (!pass) [[unlikely]] {
+      TEST_MESSAGE_ALWAYS(std::format("Simple check: {}, "
+                                      "PointMathBasic: {}, "
+                                      "relative tolerance: {}, "
+                                      "absolute tolerance: {}",
+                                      pointString(c), pointString(d),
+                                      fpString(relTol), fpString(absTol)));
+    }
+    return pass;
   };
 
   runRandomTests<3, Fp32>(rng, 500 /*numTrials*/, func);
   runRandomTests<3, Fp64>(rng, 500 /*numTrials*/, func);
 
-  // MESSAGE_MAX_ERR_VARS
+  errs.print();
 }
