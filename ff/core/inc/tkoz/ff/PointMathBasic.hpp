@@ -21,6 +21,8 @@ namespace tkoz::ff {
 /// In general, the speed of the math does little to the rendering speed which
 /// is dominated by random memory access.
 ///
+/// TODO replace all use of std:: math functions with custom wrappers that take
+/// Number<float> or Number<double>.
 struct PointMathBasic {
   PointMathBasic() = delete;
 
@@ -43,16 +45,18 @@ struct PointMathBasic {
   }
 
   // left *= right.
-  template <std::size_t N, cNumberType T>
-  static constexpr inline void mulEq(PointData<N, T> &left, T right) noexcept {
+  template <std::size_t N, cNumberType T, typename U>
+    requires std::is_convertible_v<U, T>
+  static constexpr inline void mulEq(PointData<N, T> &left, U right) noexcept {
     for (std::size_t i = 0; i < N; ++i) {
       left[i] *= right;
     }
   }
 
   // left /= right.
-  template <std::size_t N, cNumberType T>
-  static constexpr inline void divEq(PointData<N, T> &left, T right) noexcept {
+  template <std::size_t N, cNumberType T, typename U>
+    requires std::is_convertible_v<U, T>
+  static constexpr inline void divEq(PointData<N, T> &left, U right) noexcept {
     if constexpr (N >= 2) {
       // Precompute 1/right and multiply instead
       // TODO is N >= 2 the right threshold?
@@ -172,10 +176,11 @@ struct PointMathBasic {
   }
 
   // linear interpolation
-  template <std::size_t N, cNumberType T>
+  template <std::size_t N, cNumberType T, typename U>
+    requires std::is_convertible_v<U, T>
   [[nodiscard]] static constexpr inline auto
   interpolate(PointData<N, T> const &left, PointData<N, T> const &right,
-              T t) noexcept -> PointData<N, T> {
+              U t) noexcept -> PointData<N, T> {
     // Note: can compute lerp(a,b,t) either as (1-t)*a + t*b, or a + t*(b-a)
     // The second way requires 1 multiplication and is expected to be faster.
     // The second one also is supposedly better numerically.
@@ -197,7 +202,7 @@ struct PointMathBasic {
     // to just as efficient code.
     PointData<N, T> result;
     for (std::size_t i = 0; i < N; ++i) {
-      result.mData[i] = (left.mData[i] + right.mData[i]) / T{2.0};
+      result.mData[i] = T{0.5} * (left.mData[i] + right.mData[i]);
       // result.mData[i] =
       //     left.mData[i] + (0.5 * (right.mData[i] - left.mData[i]));
     }
