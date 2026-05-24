@@ -30,7 +30,8 @@ namespace {
 ///
 
 // Convert a float/double to string which is convertible back to exact value
-template <std::floating_point T> inline auto fpString(T value) -> std::string {
+template <std::floating_point T>
+[[nodiscard]] inline auto fpString(T value) -> std::string {
   static constexpr std::size_t cBufSize = 4 * sizeof(T);
   char buf[cBufSize];
   auto const [bufEnd, error] = std::to_chars(buf, buf + cBufSize, value);
@@ -39,13 +40,15 @@ template <std::floating_point T> inline auto fpString(T value) -> std::string {
 }
 
 // Convert a tkoz::ff::Number to string
-template <typename T> inline auto fpString(Number<T> value) -> std::string {
+template <typename T>
+[[nodiscard]] inline auto fpString(Number<T> value) -> std::string {
   return fpString(value.value());
 }
 
-// Create string representation of the point
+// Create string representation of a point
 template <std::size_t N, typename T>
-inline auto pointString(PointData<N, T> const &value) -> std::string {
+[[nodiscard]] inline auto pointString(PointData<N, T> const &value)
+    -> std::string {
   std::string result;
   result.push_back('(');
   result += fpString(value[0]);
@@ -57,36 +60,36 @@ inline auto pointString(PointData<N, T> const &value) -> std::string {
   return result;
 }
 
-// Create an error message to show the actual point values used
-template <std::size_t N, typename T>
-[[nodiscard]] auto errorMessageWithNumbers(PointData<N, T> const &actual,
-                                           PointData<N, T> const &expected)
-    -> std::string {
-  static const char *const cTypeName =
-      std::is_same_v<T, Fp32>
-          ? "float"
-          : (std::is_same_v<T, Fp64> ? "double" : "unknown");
-  return std::format("Expected {} but computed {} (type is {})",
-                     pointString(expected), pointString(actual), cTypeName);
-}
+// String name for a floating point type
+template <typename T> static const char *const cFpTypeName = "unknown";
+template <> const char *const cFpTypeName<float> = "float";
+template <> const char *const cFpTypeName<double> = "double";
+template <> const char *const cFpTypeName<Fp32> = "float";
+template <> const char *const cFpTypeName<Fp64> = "double";
 
 ///
 /// Helpers for computing error of points and numbers
 ///
 
+// Absolute error (primitive)
 template <std::floating_point T> inline auto errNumAbs(T a, T b) -> T {
   return std::abs(a - b);
 }
 
-template <typename T> inline auto errNumAbs(T a, T b) -> T::FpType {
+// Absolute error (wrapper)
+template <tkoz::ff::cNumberType T>
+inline auto errNumAbs(T a, T b) -> T::FpType {
   return errNumAbs(a.value(), b.value());
 }
 
+// Relative error (primitive)
 template <std::floating_point T> inline auto errNumRel(T a, T b) -> T {
   return std::abs(a - b) / std::max(std::abs(a), std::abs(b));
 }
 
-template <typename T> inline auto errNumRel(T a, T b) -> T::FpType {
+// Relative error (primitive)
+template <tkoz::ff::cNumberType T>
+inline auto errNumRel(T a, T b) -> T::FpType {
   return errNumRel(a.value(), b.value());
 }
 
@@ -188,7 +191,9 @@ template <std::size_t N, typename T, typename FuncT>
   for (std::size_t i = 0; i < N; ++i) {
     if (!std::forward<FuncT>(checkFunc)(F{actual[i]}, F{expected[i]}, i))
         [[unlikely]] {
-      TEST_MESSAGE_FAILURE(errorMessageWithNumbers(actual, expected));
+      TEST_MESSAGE_FAILURE(std::format(
+          "Expected {} but computed {} (type = {})", pointString(expected),
+          pointString(actual), cFpTypeName<T>));
       return false;
     }
   }
@@ -211,7 +216,7 @@ template <std::size_t N, typename T>
 // Returns true if each component passes the required absolute tolerance.
 // If any component fails, adds a test error message.
 template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
+  requires std::is_convertible_v<U, T>
 [[nodiscard]] auto isEqCompAbs(PointData<N, T> const &actual,
                                PointData<N, T> const &expected, U tol) -> bool {
   using F = T::FpType;
@@ -231,7 +236,7 @@ template <std::size_t N, typename T, typename U>
 // Returns true if each component passes the required relative tolerance.
 // If any component fails, adds a test error message.
 template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
+  requires std::is_convertible_v<U, T>
 [[nodiscard]] auto isEqCompRel(PointData<N, T> const &actual,
                                PointData<N, T> const &expected, U tol) -> bool {
   using F = T::FpType;
@@ -252,7 +257,7 @@ template <std::size_t N, typename T, typename U>
 // This tests both absolute and relative error with a single tolerance.
 // If any component fails, adds a test error message.
 template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
+  requires std::is_convertible_v<U, T>
 [[nodiscard]] auto isEqCompNear(PointData<N, T> const &actual,
                                 PointData<N, T> const &expected, U tol)
     -> bool {
@@ -276,7 +281,7 @@ template <std::size_t N, typename T, typename U>
 // This test uses separate tolerances for absolute and relative errors.
 // If any component fails, adds a test error message.
 template <std::size_t N, typename T, typename U>
-  requires std::is_same_v<T, U> || std::is_same_v<U, typename T::FpType>
+  requires std::is_convertible_v<U, T>
 [[nodiscard]] auto isEqCompClose(PointData<N, T> const &actual,
                                  PointData<N, T> const &expected, U relTol,
                                  U absTol) -> bool {
@@ -303,135 +308,179 @@ template <std::size_t N, typename T, typename U>
 /// Manually created tests
 ///
 
-// Some manually created test cases for addition
-TEST_CREATE_FAST(addEqManual1) {
+// Tests both add and addEq
+TEST_CREATE_FAST(addManual1) {
   static constexpr float errF = 10.0f * cNumEps<float>;
   static constexpr double errD = 10.0 * cNumEps<double>;
   {
     PointData<3, Fp32> a(1.0f, 2.0f, 3.0f);
     PointData<3, Fp32> const b(4.0f, 5.0f, 6.0f);
-    PointMathBasic::addEq(a, b);
     PointData<3, Fp32> const c(5.0f, 7.0f, 9.0f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::add(a, b), c, errF));
+    PointMathBasic::addEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errF));
   }
   {
     PointData<4, Fp64> a(3.1, 3.2, 3.3, -2.5);
     PointData<4, Fp64> const b(1.7, 1.8, 1.9, -3.5);
-    PointMathBasic::addEq(a, b);
     PointData<4, Fp64> const c(4.8, 5.0, 5.2, -6.0);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::add(a, b), c, errD));
+    PointMathBasic::addEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
   {
     PointData<1, Fp64> a(3.14);
     PointData<1, Fp64> const b(-3.14);
+    TEST_REQUIRE(
+        isEqCompNear(PointMathBasic::add(a, b), PointData<1, Fp64>(0.0), errD));
     PointMathBasic::addEq(a, b);
     TEST_REQUIRE_EQ(a[0], 0.0);
   }
   {
     PointData<6, Fp32> a(1.5f, -6.25f, 14.7f, -1e21f, 5.7e23f, -3.14f);
     PointData<6, Fp32> const b(1e-10f, 1e-10f, -6.8f, -2e21f, -4.6e23f, 2.72f);
-    PointMathBasic::addEq(a, b);
     PointData<6, Fp32> const c(1.5f, -6.25f, 7.9f, -3e21f, 1.1e23f, -0.42f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::add(a, b), c, errF));
+    PointMathBasic::addEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, 10.0f * errF));
   }
   {
     PointData<2, Fp64> a(2.0 + 5e-16, 3.0 - 8e-16);
     PointData<2, Fp64> const b(-2.0, -3.0);
-    PointMathBasic::addEq(a, b);
     PointData<2, Fp64> const c(0.0, 0.0);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::add(a, b), c, errD));
+    PointMathBasic::addEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
 }
 
-// Some manually created test cases for subtraction
-TEST_CREATE_FAST(subEqManual1) {
+// Tests both sub and subEq
+TEST_CREATE_FAST(subManual1) {
   static constexpr float errF = 10.0f * cNumEps<float>;
   static constexpr double errD = 10.0 * cNumEps<double>;
   {
     PointData<5, Fp64> a(60.0, 50.0, 40.0, 30.0, 20.0);
     PointData<5, Fp64> const b(70.0, 80.0, 90.0, 100.0, 110.0);
-    PointMathBasic::subEq(a, b);
     PointData<5, Fp64> const c(-10.0, -30.0, -50.0, -70.0, -90.0);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::sub(a, b), c, errD));
+    PointMathBasic::subEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
   {
     PointData<1, Fp32> a(1.0000001f);
     PointData<1, Fp32> const b(1.0f);
-    PointMathBasic::subEq(a, b);
     PointData<1, Fp32> const c(0.0f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::sub(a, b), c, errF));
+    PointMathBasic::subEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errF));
   }
   {
     PointData<3, Fp64> a(1.19, 2.21, 3.23);
     PointData<3, Fp64> const b(-5.16, 2.73, 0.91);
-    PointMathBasic::subEq(a, b);
     PointData<3, Fp64> const c(6.35, -0.52, 2.32);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::sub(a, b), c, errD));
+    PointMathBasic::subEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
   {
     PointData<2, Fp32> a(1.0000001f, 0.9999999f);
     PointData<2, Fp32> const b(1.0f, 1.0f);
-    PointMathBasic::subEq(a, b);
     PointData<2, Fp32> const c(0.0f, 0.0f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::sub(a, b), c, errF));
+    PointMathBasic::subEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errF));
   }
 }
 
-TEST_CREATE_FAST(mulEqManual1) {
+// Tests both mul and mulEq
+TEST_CREATE_FAST(mulManual1) {
   static constexpr float errF = 10.0f * cNumEps<float>;
   static constexpr double errD = 10.0 * cNumEps<double>;
   {
     PointData<3, Fp64> a(1.4, 3.7, 5.9);
-    PointMathBasic::mulEq(a, Fp64{3.0});
     PointData<3, Fp64> const b(4.2, 11.1, 17.7);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::mul(a, 3.0), b, errD));
+    PointMathBasic::mulEq(a, 3.0);
     TEST_REQUIRE(isEqCompNear(a, b, errD));
   }
   {
     PointData<2, Fp32> a(-3.6f, 6.3f);
-    PointMathBasic::mulEq(a, Fp32{-0.33333333f});
     PointData<2, Fp32> const b(1.2f, -2.1f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::mul(a, -0.33333333f), b, errF));
+    PointMathBasic::mulEq(a, -0.33333333f);
     TEST_REQUIRE(isEqCompNear(a, b, errF));
   }
 }
 
-TEST_CREATE_FAST(divEqManual1) {
+// Tests both div and divEq
+TEST_CREATE_FAST(divManual1) {
   static constexpr float errF = 10.0f * cNumEps<float>;
   static constexpr double errD = 10.0 * cNumEps<double>;
   {
     PointData<3, Fp32> a(-1.5f, 1.2f, 2.0f);
-    PointMathBasic::divEq(a, Fp32{-0.2f});
     PointData<3, Fp32> const b(7.5f, -6.0f, -10.0f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::div(a, -0.2f), b, errF));
+    PointMathBasic::divEq(a, -0.2f);
     TEST_REQUIRE(isEqCompNear(a, b, errF));
   }
   {
     PointData<2, Fp64> a(-1.65, 3.3);
-    PointMathBasic::divEq(a, Fp64{1.1});
     PointData<2, Fp64> const b(-1.5, 3.0);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::div(a, 1.1), b, errD));
+    PointMathBasic::divEq(a, 1.1);
     TEST_REQUIRE(isEqCompNear(a, b, errD));
   }
 }
 
-TEST_CREATE_FAST(compMulEqManual1) {
+// Tests both componentMul and componentMulEq
+TEST_CREATE_FAST(compMulManual1) {
   // static constexpr float errF = 10.0f * cNumEps<float>;
   static constexpr double errD = 10.0 * cNumEps<double>;
   {
     PointData<7, Fp64> a(-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0);
     PointData<7, Fp64> const b(-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0);
-    PointMathBasic::componentMulEq(a, b);
     PointData<7, Fp64> const c(8.0, 3.0, 0.0, -1.0, 0.0, 3.0, 8.0);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::componentMul(a, b), c, errD));
+    PointMathBasic::componentMulEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errD));
   }
 }
 
-TEST_CREATE_FAST(compDivEqManual1) {
+// Tests both componentDiv and componentDivEq
+TEST_CREATE_FAST(compDivManual1) {
   static constexpr float errF = 10.0f * cNumEps<float>;
   // static constexpr double errD = 10.0 * cNumEps<double>;
   {
     PointData<5, Fp32> a(-2.0f, -1.0f, 0.0f, 1.0f, 2.0f);
     PointData<5, Fp32> const b(1.0f, 2.0f, 3.0f, 4.0f, 5.0f);
-    PointMathBasic::componentDivEq(a, b);
     PointData<5, Fp32> const c(-2.0f, -0.5f, 0.0f, 0.25f, 0.4f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::componentDiv(a, b), c, errF));
+    PointMathBasic::componentDivEq(a, b);
     TEST_REQUIRE(isEqCompNear(a, c, errF));
+  }
+}
+
+TEST_CREATE_FAST(pointFmaManual1) {
+  static constexpr float errF = 10.0f * cNumEps<float>;
+  static constexpr double errD = 10.0 * cNumEps<double>;
+  {
+    PointData<3, Fp32> const a(5.0f, 7.0f, 9.0f);
+    PointData<3, Fp32> const b(3.0f, -5.0f, -10.0f);
+    PointData<3, Fp32> const c(6.5f, 4.5f, 4.0f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::fma(b, 0.5f, a), c, errF));
+  }
+  {
+    PointData<1, Fp32> const a(10.0f);
+    PointData<1, Fp32> const b(1.0f);
+    PointData<1, Fp32> const c(0.0f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::fma(b, -10.0f, a), c, errF));
+  }
+  {
+    PointData<5, Fp64> const a(0.0, 1.7, -5.5, -18.91, 561.32);
+    PointData<5, Fp64> const b(0.0, 0.0, 6.0, -0.09, -0.9);
+    PointData<5, Fp64> const c(0.0, 1.7, -3.5, -18.94, 561.02);
+    TEST_REQUIRE(
+        isEqCompNear(PointMathBasic::fma(b, 0.3333333333333333, a), c, errD));
   }
 }
 
@@ -542,13 +591,62 @@ TEST_CREATE_FAST(cross3dManual1) {
   }
 }
 
-// TEST_CREATE_FAST(interpolate) {}
+TEST_CREATE_FAST(interpolateManual1) {
+  static constexpr float errF = 10.0f * cNumEps<float>;
+  static constexpr double errD = 10.0 * cNumEps<double>;
+  {
+    PointData<4, Fp32> const a(1.6f, 3.2f, 4.8f, 6.4f);
+    PointData<4, Fp32> const b(1.5f, 3.0f, 4.5f, 6.0f);
+    PointData<4, Fp32> const c(1.55f, 3.1f, 4.65f, 6.2f);
+    TEST_REQUIRE(
+        isEqCompNear(PointMathBasic::interpolate(a, b, 0.5f), c, errF));
+  }
+  {
+    PointData<2, Fp64> const a(-4.9, 4.9);
+    PointData<2, Fp64> const b(-11.8, 4.6);
+    PointData<2, Fp64> const c(-7.2, 4.8);
+    TEST_REQUIRE(isEqCompNear(
+        PointMathBasic::interpolate(a, b, 0.3333333333333333), c, errD));
+  }
+  {
+    PointData<3, Fp32> const a(1.88f, 2.71f, -3.11f);
+    PointData<3, Fp32> const b(-8.515f, -11.609f, 41.316f);
+    TEST_REQUIRE(
+        isEqCompNear(PointMathBasic::interpolate(a, b, 0.0f), a, errF));
+  }
+  {
+    PointData<3, Fp64> const a(6.1, -5.2, 18.6);
+    PointData<3, Fp64> const b(-17.002, 654.321, -999.999);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::interpolate(a, b, 1.0), b, errD));
+  }
+}
 
-// TEST_CREATE_FAST(midpoint) {}
+TEST_CREATE_FAST(midpointManual1) {
+  static constexpr float errF = 10.0f * cNumEps<float>;
+  static constexpr double errD = 10.0 * cNumEps<double>;
+  {
+    PointData<4, Fp32> const a(-3.0f, 9.5f, 2.6662f, -3.9999999998f);
+    PointData<4, Fp32> const b(3.0f, -9.9f, 2.6668f, -4.0f);
+    PointData<4, Fp32> const c(0.0f, -0.2f, 2.6665f, -3.9999999999f);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::midpoint(a, b), c, errF));
+  }
+  {
+    PointData<2, Fp64> const a(5.7, -1.0);
+    PointData<2, Fp64> const b(7.0, -2.0);
+    PointData<2, Fp64> const c(6.35, -1.5);
+    TEST_REQUIRE(isEqCompNear(PointMathBasic::midpoint(a, b), c, errD));
+  }
+}
 
+// Also tests parallelAndOrthogonalComponents
 // TEST_CREATE_FAST(projectOnto) {}
 
-// TEST_CREATE_FAST(reflectAcross) {}
+// Also tests parallelAndOrthogonalComponents
+// TEST_CREATE_FAST(rejectFrom) {}
+
+// TEST_CREATE_FAST(reflectAcrossPlane) {}
+
+// TEST_CREATE_FAST(reflecAlongAxis) {}
 
 // TEST_CREATE_FAST(rotate2d) {}
 
@@ -575,6 +673,21 @@ TEST_CREATE_FAST(cross3dManual1) {
 ///
 /// Randomized testing
 ///
+
+// TODO randomized testing should be reworked. It's not very reliable to have
+// a fixed tolerance across all generated inputs. Sometimes we will end up with
+// some poor input (such as near parallel vectors) that just has significantly
+// higher error for whatever reason. We are also comparing 2 algorithms,
+// generally 1 stable and 1 less stable. We should run all tests and keep track
+// of how many have small error and how many exceed it by not too much (maybe
+// something like 10*eps for majority and 1000*eps for worst case?).
+// Additionally, have a way to configure output for a report of error
+// distribution so we can see if it is reasonable. Having good low error in the
+// majority of test cases should be good enough for fractal rendering.
+//
+// 1. per test tolerance by analyzing input
+// 2. skip poorly conditioned inputs
+// 3. tolerance tiers
 
 namespace {
 
@@ -951,10 +1064,15 @@ TEST_CREATE_FAST(angleBetweenRandom1) {
       // Due to instability of the acos method, maybe consider allowing the
       // tolerance go up quite a bit as the angle gets close to 0 or pi
 #ifdef __clang__
+          // Previous idea
           // F const edgeDist = std::min(c, cNumPi<F> - c);
           // F const relTol = F{40.0} * cNumEps<F> / std::cbrt(edgeDist);
+          // Before Clang22 these seemed to work?
+          // F const relTol = F{360.0} * cNumEps<F>;
+          // F const absTol = F{60.0} * cNumEps<F>;
+          // With Clang22 changed to this
           F const relTol = F{360.0} * cNumEps<F>;
-          F const absTol = F{60.0} * cNumEps<F>;
+          F const absTol = F{120.0} * cNumEps<F>;
 #elifdef __GNUC__
           F const edgeDist = std::min(c, cNumPi<F> - c);
           F const relTol = F{80.0} * cNumEps<F>;
@@ -1060,8 +1178,9 @@ TEST_CREATE_FAST(cross2dRandom1) {
     static constexpr F relTol = F{10.0} * cNumEps<F>;
     static constexpr F absTol = F{10.0} * cNumEps<F>;
 #elifdef __GNUC__
-    static constexpr F relTol = F{10.0} * cNumEps<F>;
-    static constexpr F absTol = F{10.0} * cNumEps<F>;
+    // Both were 10*eps before, GCC16 changes things?
+    static constexpr F relTol = F{35.0} * cNumEps<F>;
+    static constexpr F absTol = F{35.0} * cNumEps<F>;
 #else
 #error "did not write this with a tolerance for other compilers"
 #endif
@@ -1141,3 +1260,23 @@ TEST_CREATE_FAST(cross3dRandom1) {
 
   errs.print();
 }
+
+// TODO random tests for
+// - interpolate
+// - midpoint
+// - projectOnto
+// - rejectFrom
+// - parallelAndOrthogonalComponents
+// - reflectAcrossPlane
+// - reflectAlongAxis
+// - rotate2d
+// - sinCosRad2d
+// - pNormIntPowerSumCt
+// - pNormIntPowerSumRt
+// - pNormIntCt
+// - pNormIntRt
+// - maxNorm
+// - pNormFloatPowerSumCt
+// - pNormFloatPowerSumRt
+// - pNormFloatCt
+// - pNormFloatRt

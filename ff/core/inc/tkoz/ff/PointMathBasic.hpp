@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <type_traits>
+#include <utility>
 
 namespace tkoz::ff {
 
@@ -26,7 +27,23 @@ namespace tkoz::ff {
 struct PointMathBasic {
   PointMathBasic() = delete;
 
-  // left += right.
+  //
+  // Basic vector operations on components
+  //
+
+  /// Adds `left` and `right` (`left + right`)
+  template <std::size_t N, cNumberType T>
+  [[nodiscard]] static constexpr inline auto
+  add(PointData<N, T> const &left, PointData<N, T> const &right) noexcept
+      -> PointData<N, T> {
+    PointData<N, T> result;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = left[i] + right[i];
+    }
+    return result;
+  }
+
+  /// Adds `right` to `left` in place (`left += right`).
   template <std::size_t N, cNumberType T>
   static constexpr inline void addEq(PointData<N, T> &left,
                                      PointData<N, T> const &right) noexcept {
@@ -35,7 +52,19 @@ struct PointMathBasic {
     }
   }
 
-  // left -= right.
+  /// Subtracts `left` and `right` (`left - right`)
+  template <std::size_t N, cNumberType T>
+  [[nodiscard]] static constexpr inline auto
+  sub(PointData<N, T> const &left, PointData<N, T> const &right) noexcept
+      -> PointData<N, T> {
+    PointData<N, T> result;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = left[i] - right[i];
+    }
+    return result;
+  }
+
+  /// Subtracts `right` from `left` in place (`left -= right`).
   template <std::size_t N, cNumberType T>
   static constexpr inline void subEq(PointData<N, T> &left,
                                      PointData<N, T> const &right) noexcept {
@@ -44,7 +73,20 @@ struct PointMathBasic {
     }
   }
 
-  // left *= right.
+  /// Multiplies `left` by `right` (`left * right`)
+  template <std::size_t N, cNumberType T, typename U>
+    requires std::is_convertible_v<U, T>
+  [[nodiscard]] static constexpr inline auto mul(PointData<N, T> const &left,
+                                                 U right) noexcept
+      -> PointData<N, T> {
+    PointData<N, T> result;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = left[i] * right;
+    }
+    return result;
+  }
+
+  /// Multiplies `left` by `right` in place (`left *= right`).
   template <std::size_t N, cNumberType T, typename U>
     requires std::is_convertible_v<U, T>
   static constexpr inline void mulEq(PointData<N, T> &left, U right) noexcept {
@@ -53,7 +95,24 @@ struct PointMathBasic {
     }
   }
 
-  // left /= right.
+  /// Divides `left` by `right` (`left / right`)
+  template <std::size_t N, cNumberType T, typename U>
+    requires std::is_convertible_v<U, T>
+  [[nodiscard]] static constexpr inline auto div(PointData<N, T> const &left,
+                                                 U right) noexcept
+      -> PointData<N, T> {
+    if constexpr (N >= 2) {
+      return mul(left, cNumInteger<typename T::FpType, 1> / right);
+    } else {
+      PointData<N, T> result;
+      for (std::size_t i = 0; i < N; ++i) {
+        result[i] = left[i] / right;
+      }
+      return result;
+    }
+  }
+
+  /// Divides `left` by `right` in place (`left /= right`).
   template <std::size_t N, cNumberType T, typename U>
     requires std::is_convertible_v<U, T>
   static constexpr inline void divEq(PointData<N, T> &left, U right) noexcept {
@@ -70,7 +129,19 @@ struct PointMathBasic {
     }
   }
 
-  // component multiply
+  /// Multiplies vector components: `(left0*right0,left1*right1,...)`
+  template <std::size_t N, cNumberType T>
+  [[nodiscard]] static constexpr inline auto
+  componentMul(PointData<N, T> const &left,
+               PointData<N, T> const &right) noexcept -> PointData<N, T> {
+    PointData<N, T> result;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = left[i] * right[i];
+    }
+    return result;
+  }
+
+  /// Multiplies vector components in place: `(left0*right0,left1*right1,...)`.
   template <std::size_t N, cNumberType T>
   static constexpr inline void
   componentMulEq(PointData<N, T> &left, PointData<N, T> const &right) noexcept {
@@ -79,7 +150,19 @@ struct PointMathBasic {
     }
   }
 
-  // component divide
+  /// Divides vector components: `(left0/right0,left1/right1,...)`
+  template <std::size_t N, cNumberType T>
+  [[nodiscard]] static constexpr inline auto
+  componentDiv(PointData<N, T> const &left,
+               PointData<N, T> const &right) noexcept -> PointData<N, T> {
+    PointData<N, T> result;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = left[i] / right[i];
+    }
+    return result;
+  }
+
+  /// Divides vector components in place: `(left0/right0,left1/right1,...)`.
   template <std::size_t N, cNumberType T>
   static constexpr inline void
   componentDivEq(PointData<N, T> &left, PointData<N, T> const &right) noexcept {
@@ -88,7 +171,25 @@ struct PointMathBasic {
     }
   }
 
-  // dot product
+  /// Computes a fused multiply add of `left*scale + right`
+  template <std::size_t N, cNumberType T, typename U>
+    requires std::is_convertible_v<U, T>
+  [[nodiscard]] static constexpr inline auto
+  fma(PointData<N, T> const &left, U scale,
+      PointData<N, T> const &right) noexcept -> PointData<N, T> {
+    PointData<N, T> result;
+    using F = T::FpType;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = std::fma(F{left[i]}, F{scale}, F{right[i]});
+    }
+    return result;
+  }
+
+  //
+  // Mathematical vector operations
+  //
+
+  /// \return Dot product: `(left0*right0 + left1*right1 + ...)`.
   template <std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   dotProduct(PointData<N, T> const &left, PointData<N, T> const &right) noexcept
@@ -103,8 +204,9 @@ struct PointMathBasic {
     return result;
   }
 
-  // angle between vectors
-  // note: this computes L2 norms as well when not assuming unit vectors
+  /// \return Angle between vectors (in radians).
+  /// \tparam cAssumeUnitT If true, inputs are assumed to be unit vectors.
+  /// \note This computes L2 norms as well when not assuming unit vectors.
   template <bool cAssumeUnitT, std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   angleBetween(PointData<N, T> left, PointData<N, T> right) noexcept -> T {
@@ -150,7 +252,7 @@ struct PointMathBasic {
     // atan2(sqrt(norm(a)^2*norm(b)^2-dot(a,b)^2),dot(a,b))
   }
 
-  // 2d "cross" product (the z component as if done in 3 dimensions)
+  /// \return The 2D "cross" product (`left0*right1 - left1*right0`).
   template <cNumberType T>
   [[nodiscard]] static constexpr inline auto
   cross2d(PointData<2, T> const &left, PointData<2, T> const &right) noexcept
@@ -161,7 +263,7 @@ struct PointMathBasic {
     return std::fma(F{left[0]}, F{right[1]}, -F{left[1] * right[0]});
   }
 
-  // 3d cross product
+  /// \return The 3D cross product which is perpendicular to both inputs.
   template <cNumberType T>
   [[nodiscard]] static constexpr inline auto
   cross3d(PointData<3, T> const &left, PointData<3, T> const &right) noexcept
@@ -175,7 +277,8 @@ struct PointMathBasic {
         std::fma(F{left[0]}, F{right[1]}, -F{left[1] * right[0]}));
   }
 
-  // linear interpolation
+  /// \return Linear interpolation of 2 vectors (`t*left + (1-t)*right`).
+  /// \note Intended for t in [0,1] but will continue linearly outside of that.
   template <std::size_t N, cNumberType T, typename U>
     requires std::is_convertible_v<U, T>
   [[nodiscard]] static constexpr inline auto
@@ -187,13 +290,14 @@ struct PointMathBasic {
     PointData<N, T> result;
     // const T ta = T{1.0} - t;
     for (std::size_t i = 0; i < N; ++i) {
-      // result.mData[i] = (ta * left.mData[i]) + (t * right.mData[i]);
+      // result[i] = (ta * left[i]) + (t * right[i]);
       result[i] = left[i] + (t * (right[i] - left[i]));
     }
     return result;
   }
 
-  // midpoint (special case of interpolate)
+  /// \return The midpoint of 2 vectors (`(left+right)/2`).
+  /// \note This is a special case of midpoint with t=0.5.
   template <std::size_t N, cNumberType T>
   [[nodiscard]] static constexpr inline auto
   midpoint(PointData<N, T> const &left, PointData<N, T> const &right) noexcept
@@ -202,38 +306,107 @@ struct PointMathBasic {
     // to just as efficient code.
     PointData<N, T> result;
     for (std::size_t i = 0; i < N; ++i) {
-      result.mData[i] = T{0.5} * (left.mData[i] + right.mData[i]);
-      // result.mData[i] =
-      //     left.mData[i] + (0.5 * (right.mData[i] - left.mData[i]));
+      result[i] = T{static_cast<T::FpType>(0.5)} * (left[i] + right[i]);
+      // result[i] = left[i] + (0.5 * (right[i] - left[i]));
     }
     return result;
   }
 
+  //
+  // Vector component operations
+  //
+
   // project onto vector in place (optionally assume onto is a unit vector)
   template <bool cAssumeUnitT, std::size_t N, cNumberType T>
-  static constexpr inline void
-  projectOnto(PointData<N, T> &point, PointData<N, T> const &onto) noexcept {
-    T scale = dot(point, onto);
+  [[nodiscard]] static constexpr inline auto
+  projectOnto(PointData<N, T> const &dir, PointData<N, T> const &onto) noexcept
+      -> PointData<N, T> {
+    T scale = dot(dir, onto);
     if constexpr (!cAssumeUnitT) {
-      scale /= pNormIntPowerSumCt<2>(onto);
+      scale /= dotProduct(onto, onto);
     }
+    PointData<N, T> result;
     for (std::size_t i = 0; i < N; ++i) {
-      point[i] = scale * onto[i];
+      result[i] = scale * onto[i];
     }
+    return result;
   }
 
-  // reflect across axis in place (optionally assume axis is a unit vector)
+  // rejection of a vector (orthogonal to projection) (may assume from is unit)
   template <bool cAssumeUnitT, std::size_t N, cNumberType T>
-  static constexpr inline void
-  reflectAcross(PointData<N, T> &point, PointData<N, T> const &axis) noexcept {
-    T scale = T{2.0} * dot(point, axis);
+  [[nodiscard]] static constexpr inline auto
+  rejectFrom(PointData<N, T> const &dir, PointData<N, T> const &from) noexcept
+      -> PointData<N, T> {
+    T scale = -dot(dir, from);
     if constexpr (!cAssumeUnitT) {
-      scale /= pNormIntPowerSum<2>(axis);
+      scale /= dotProduct(from, from);
+    }
+    PointData<N, T> result;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = std::fma(scale, from[i], dir[i]);
+    }
+    return result;
+  }
+
+  template <bool cAssumeUnitT, std::size_t N, cNumberType T>
+  [[nodiscard]] static constexpr inline auto
+  parallelAndOrthogonalComponents(PointData<N, T> const &dir,
+                                  PointData<N, T> const &axis) noexcept
+      -> std::pair<PointData<N, T>, PointData<N, T>> {
+    PointData<N, T> resultParallel;
+    PointData<N, T> resultOrthogonal;
+    T scale = dot(dir, axis);
+    if constexpr (!cAssumeUnitT) {
+      scale /= dotProduct(axis, axis);
+    }
+    T scaleOrth = -scale;
+    for (std::size_t i = 0; i < N; ++i) {
+      resultParallel[i] = scale * axis[i];
     }
     for (std::size_t i = 0; i < N; ++i) {
-      point[i] = (scale * axis[i]) - point[i];
+      resultOrthogonal[i] = std::fma(scaleOrth, axis[i], dir[i]);
     }
+    return std::make_pair(resultParallel, resultOrthogonal);
   }
+
+  // reflect across normal plane (optionally assume normal is a unit vector)
+  // this is like a mirror, keeps same orthogonal component
+  template <bool cAssumeUnitT, std::size_t N, cNumberType T>
+  [[nodiscard]] static constexpr inline auto
+  reflectAcrossPlane(PointData<N, T> const &dir,
+                     PointData<N, T> const &normal) noexcept
+      -> PointData<N, T> {
+    T scale = T{static_cast<T::FpType>(-2.0)} * dot(dir, normal);
+    if constexpr (!cAssumeUnitT) {
+      scale /= dotProduct(normal, normal);
+    }
+    PointData<N, T> result;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = std::fma(scale, normal[i], dir[i]);
+    }
+    return result;
+  }
+
+  // reflect along an axis (optionally assume axis is a unit vector)
+  // this is opposite of reflectAcrossPlane, keeps the same parallel component
+  template <bool cAssumeUnitT, std::size_t N, cNumberType T>
+  [[nodiscard]] static constexpr inline auto
+  reflectAlongAxis(PointData<N, T> const &dir,
+                   PointData<N, T> const &axis) noexcept -> PointData<N, T> {
+    T scale = T{static_cast<T::FpType>(2.0)} * dot(dir, axis);
+    if constexpr (!cAssumeUnitT) {
+      scale /= dotProduct(axis, axis);
+    }
+    PointData<N, T> result;
+    for (std::size_t i = 0; i < N; ++i) {
+      result[i] = std::fma(scale, axis[i], -dir[i]);
+    }
+    return result;
+  }
+
+  //
+  // Special extras for 2D
+  //
 
   // ccw rotation in 2d plane (modifies x and y in place)
   template <cNumberType T>
@@ -253,6 +426,10 @@ struct PointMathBasic {
     outCos = x / outRad;
     outSin = y / outRad;
   }
+
+  //
+  // Vector norms
+  //
 
   // nicer front end vector norm interface that does not use 5 function names
   // pass an instance of PNormCt or PNormRt, calls the appropriate function
@@ -492,5 +669,7 @@ private:
 //   corresponding components are very close, we already lost information
 // - similarly, normalizing a vector is no better than A/magnitude(A),
 //   the only room for better stability is really the magnitude function
+// - other operations besides std::fma which may be worth looking into
+//   - rsqrt, hypot, simd
 
 } // namespace tkoz::ff
