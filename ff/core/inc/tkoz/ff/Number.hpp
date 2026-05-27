@@ -2,6 +2,7 @@
 
 #include <tkoz/ff/Types.hpp>
 
+#include <limits>
 #include <type_traits>
 #include <utility>
 
@@ -174,6 +175,21 @@ public:
                                                          Number right)
       -> decltype(std::declval<NumT>() <=> std::declval<NumT>()) {
     return left.mValue <=> right.mValue;
+  }
+
+  /// \return The nan value.
+  [[nodiscard]] static inline constexpr auto nan() -> Number {
+    return Number(std::numeric_limits<NumT>::quiet_NaN());
+  }
+
+  /// \return Positive infinity.
+  [[nodiscard]] static inline constexpr auto infPos() -> Number {
+    return Number(std::numeric_limits<NumT>::infinity());
+  }
+
+  /// \return Negative infinity.
+  [[nodiscard]] static inline constexpr auto infNeg() -> Number {
+    return Number(-std::numeric_limits<NumT>::infinity());
   }
 };
 

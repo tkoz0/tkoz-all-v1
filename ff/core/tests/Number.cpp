@@ -2,8 +2,10 @@
 
 #include <tkoz/SRTest.hpp>
 
+#include <cmath>
 #include <compare>
 #include <concepts>
+#include <limits>
 #include <utility>
 
 using tkoz::ff::Fp32;
@@ -237,4 +239,28 @@ TEST_CREATE_FAST(compare) {
   TEST_REQUIRE_GE(Fp32(-501.0f), Fp32(-501.0f));
   TEST_REQUIRE_GE(Fp64(19.1), Fp64(-19.1));
   TEST_REQUIRE_GE(Fp64(8.2), Fp64(8.2));
+}
+
+TEST_CREATE_FAST(constants) {
+  const auto runTest = []<typename T>() {
+    using Num = tkoz::ff::Number<T>;
+    TEST_REQUIRE(std::isnan(Num::nan().value()));
+    TEST_REQUIRE(std::isinf(Num::infPos().value()));
+    TEST_REQUIRE(std::isinf(Num::infNeg().value()));
+    TEST_REQUIRE_LT(Num::infNeg(), std::numeric_limits<T>::min());
+    TEST_REQUIRE_GT(Num::infPos(), std::numeric_limits<T>::max());
+    TEST_REQUIRE_LT(Num::infNeg(), Num::infPos());
+    TEST_REQUIRE_GT(Num::infPos(), Num::infNeg());
+    TEST_REQUIRE_EQ(Num::infPos(), Num::infPos());
+    TEST_REQUIRE_EQ(Num::infNeg(), Num::infNeg());
+    TEST_REQUIRE_NE(Num::infPos(), Num::infNeg());
+    TEST_REQUIRE_NE(Num::infNeg(), Num::infPos());
+    TEST_REQUIRE_NE(Num::infPos(), Num::nan());
+    TEST_REQUIRE_NE(Num::nan(), Num::infPos());
+    TEST_REQUIRE_NE(Num::infNeg(), Num::nan());
+    TEST_REQUIRE_NE(Num::nan(), Num::infNeg());
+    TEST_REQUIRE_NE(Num::nan(), Num::nan());
+  };
+  runTest.template operator()<float>();
+  runTest.template operator()<double>();
 }
