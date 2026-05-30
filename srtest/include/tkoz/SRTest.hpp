@@ -168,6 +168,10 @@ public:
   TestRegistry &operator=(TestRegistry &&) = delete;
 
   /// \return The singleton instance keeping track of available tests.
+  /// \note This guarantees initialization on first use. TestRegistrar objects
+  /// should be the only ones to call this during static initialization.
+  /// To avoid destruction order issues with static variables, nothing should
+  /// access this after termination of main().
   [[nodiscard]] static auto instance() noexcept -> TestRegistry &;
 
   /// \return All tests contained in the registry.

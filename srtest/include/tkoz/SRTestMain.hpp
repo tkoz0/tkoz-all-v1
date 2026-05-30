@@ -5,6 +5,11 @@
 /// Most likely, that source file would just contain a single line:
 /// #include <tkoz/SRTestMain.hpp>
 
+// Use old style header include guards instead of pragma once
+// so we can warn client code about proper usage.
+#ifndef TKOZ_SRTEST_MAIN_INCLUDED
+#define TKOZ_SRTEST_MAIN_INCLUDED
+
 #include "SRTest.hpp"
 
 #include <bit>
@@ -51,6 +56,8 @@ auto TestTags::allTags() const noexcept -> std::vector<TagEnum> {
           [](std::size_t i) -> TagEnum { return static_cast<TagEnum>(i); }));
 }
 
+// TODO this is called in static initialization and could throw
+// Maybe store full path and validate at run time instead
 auto testFilePath(std::string_view aFullPath) -> std::string {
   static std::string const cRoot = TKOZ_SRTEST_SOURCE_ROOT;
   static std::string const cExt = TKOZ_SRTEST_SOURCE_EXT;
@@ -68,7 +75,7 @@ auto testFilePath(std::string_view aFullPath) -> std::string {
   }
   if (aFullPath.contains(':')) {
     throw std::runtime_error(
-        std::format("test path contains a color: {}", aFullPath));
+        std::format("test path contains a colon: {}", aFullPath));
   }
   return std::string(aFullPath.substr(
       cRoot.size(), aFullPath.size() - cRoot.size() - cExt.size()));
@@ -239,8 +246,9 @@ auto fpErrUlpImpl(T aActual, T aExpected) -> FpBits<T>::Unsigned {
   }
   BitsT lBitsActual = std::bit_cast<BitsT>(aActual);
   BitsT lBitsExpected = std::bit_cast<BitsT>(aExpected);
-  // Positive float values as bits correspond to positive signed integer values
-  // Negative float values are ordered backwards, switch negative signed values
+  // Positive float values as bits correspond to positive signed integer values.
+  // Negative float values are ordered backwards, switch negative signed values.
+  // This also ensures +0 and -0 map to the same representation (all zero bits).
   if (lBitsActual < BitsT{0}) {
     lBitsActual = std::numeric_limits<BitsT>::min() - lBitsActual;
   }
@@ -305,7 +313,7 @@ void requireCloseRelImpl(T aActual, T aExpected, T aTolerance,
   T lLhs = fpErrAbs(aActual, aExpected);
   T lRhs = aTolerance;
   if constexpr (cDivT == RelErrDiv::cExp) {
-    lRhs *= aExpected;
+    lRhs *= std::abs(aExpected);
   } else if constexpr (cDivT == RelErrDiv::cMax) {
     lRhs *= std::max(std::abs(aActual), std::abs(aExpected));
   } else if constexpr (cDivT == RelErrDiv::cAvg) {
@@ -428,8 +436,8 @@ void requireCloseImpl(T aActual, T aExpected, T aRelTol, T aAbsTol,
                              aActualStr, fpString(aActual), aExpectedStr,
                              fpString(aExpected), aRelTolStr, fpString(aRelTol),
                              aAbsTolStr, fpString(aAbsTol),
-                             fpErrRel(aActual, aExpected),
-                             fpErrAbs(aActual, aExpected)),
+                             fpString(fpErrRel(aActual, aExpected)),
+                             fpString(fpErrAbs(aActual, aExpected))),
                  aSrcLoc);
   }
 }
@@ -467,12 +475,13 @@ void requireNearImpl(T aActual, T aExpected, T aTolerance,
   if (!lResult) [[unlikely]] {
     throwFailure(std::format("expected {} ({}) to be near {} ({}) "
                              "with tolerance at most {} ({}) "
-                             "but found relative error {}"
+                             "but found relative error {} "
                              "and absolute error {}",
                              aActualStr, fpString(aActual), aExpectedStr,
                              fpString(aExpected), aToleranceStr,
-                             fpString(aTolerance), fpErrRel(aActual, aExpected),
-                             fpErrAbs(aActual, aExpected)),
+                             fpString(aTolerance),
+                             fpString(fpErrRel(aActual, aExpected)),
+                             fpString(fpErrAbs(aActual, aExpected))),
                  aSrcLoc);
   }
 }
@@ -917,3 +926,7 @@ int main(int argc, char **argv) {
   // Give a nonzero exit code if any tests failed.
   return lNumFailed > 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
+
+#else
+#error "SRTestMain.hpp must appear exactly once in a test runner .cpp file"
+#endif // #ifdef TKOZ_SRTEST_MAIN_INCLUDED
