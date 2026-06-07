@@ -1,4 +1,6 @@
+#include <tkoz/ff/Number.hpp>
 #include <tkoz/ff/PointMathBasic.hpp>
+#include <tkoz/ff/Types.hpp>
 
 #include <tkoz/SRTest.hpp>
 
@@ -12,6 +14,7 @@
 #include <type_traits>
 #include <utility>
 
+using tkoz::ff::cNumberType;
 using tkoz::ff::cNumEps;
 using tkoz::ff::cNumPi;
 using tkoz::ff::cNumPiMult;
@@ -62,8 +65,8 @@ template <std::size_t N, typename T>
 
 // String name for a floating point type
 template <typename T> static const char *const cFpTypeName = "unknown";
-template <> const char *const cFpTypeName<float> = "float";
-template <> const char *const cFpTypeName<double> = "double";
+// template <> const char *const cFpTypeName<float> = "float";
+// template <> const char *const cFpTypeName<double> = "double";
 template <> const char *const cFpTypeName<Fp32> = "float";
 template <> const char *const cFpTypeName<Fp64> = "double";
 
@@ -87,7 +90,7 @@ template <std::floating_point T> inline auto errNumRel(T a, T b) -> T {
   return std::abs(a - b) / std::max(std::abs(a), std::abs(b));
 }
 
-// Relative error (primitive)
+// Relative error (wrapper)
 template <tkoz::ff::cNumberType T>
 inline auto errNumRel(T a, T b) -> T::FpType {
   return errNumRel(a.value(), b.value());
@@ -310,8 +313,8 @@ template <std::size_t N, typename T, typename U>
 
 // Tests both add and addEq
 TEST_CREATE_FAST(addManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<3, Fp32> a(1.0f, 2.0f, 3.0f);
     PointData<3, Fp32> const b(4.0f, 5.0f, 6.0f);
@@ -356,8 +359,8 @@ TEST_CREATE_FAST(addManual1) {
 
 // Tests both sub and subEq
 TEST_CREATE_FAST(subManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<5, Fp64> a(60.0, 50.0, 40.0, 30.0, 20.0);
     PointData<5, Fp64> const b(70.0, 80.0, 90.0, 100.0, 110.0);
@@ -394,8 +397,8 @@ TEST_CREATE_FAST(subManual1) {
 
 // Tests both mul and mulEq
 TEST_CREATE_FAST(mulManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<3, Fp64> a(1.4, 3.7, 5.9);
     PointData<3, Fp64> const b(4.2, 11.1, 17.7);
@@ -414,8 +417,8 @@ TEST_CREATE_FAST(mulManual1) {
 
 // Tests both div and divEq
 TEST_CREATE_FAST(divManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<3, Fp32> a(-1.5f, 1.2f, 2.0f);
     PointData<3, Fp32> const b(7.5f, -6.0f, -10.0f);
@@ -434,8 +437,8 @@ TEST_CREATE_FAST(divManual1) {
 
 // Tests both componentMul and componentMulEq
 TEST_CREATE_FAST(compMulManual1) {
-  // static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  // static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<7, Fp64> a(-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0);
     PointData<7, Fp64> const b(-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0);
@@ -448,8 +451,8 @@ TEST_CREATE_FAST(compMulManual1) {
 
 // Tests both componentDiv and componentDivEq
 TEST_CREATE_FAST(compDivManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  // static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  // static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<5, Fp32> a(-2.0f, -1.0f, 0.0f, 1.0f, 2.0f);
     PointData<5, Fp32> const b(1.0f, 2.0f, 3.0f, 4.0f, 5.0f);
@@ -461,8 +464,8 @@ TEST_CREATE_FAST(compDivManual1) {
 }
 
 TEST_CREATE_FAST(pointFmaManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<3, Fp32> const a(5.0f, 7.0f, 9.0f);
     PointData<3, Fp32> const b(3.0f, -5.0f, -10.0f);
@@ -485,17 +488,17 @@ TEST_CREATE_FAST(pointFmaManual1) {
 }
 
 TEST_CREATE_FAST(dotProductManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr float errF = 10.0f * cNumEps<Fp32>.value();
+  static constexpr double errD = 10.0 * cNumEps<Fp64>.value();
   {
     PointData<4, Fp64> const a(1.4, -3.5, 0.7, -0.3);
     PointData<4, Fp64> const b(-1.6, -2.0, 1.0, 1.7);
-    TEST_REQUIRE_NEAR(double{PointMathBasic::dotProduct(a, b)}, 4.95, errD);
+    TEST_REQUIRE_NEAR(PointMathBasic::dotProduct(a, b).value(), 4.95, errD);
   }
   {
     PointData<3, Fp32> const a(6.0f, -3.0f, -2.0f);
     PointData<3, Fp32> const b(5.0f, 14.0f, -6.0f);
-    TEST_REQUIRE_NEAR(float{PointMathBasic::dotProduct(a, b)}, 0.0f, errF);
+    TEST_REQUIRE_NEAR(PointMathBasic::dotProduct(a, b).value(), 0.0f, errF);
   }
   // TODO Testing for stability of near orthogonal vectors
   // When the dot product is near 0 or nearly equal things are subtracted,
@@ -504,13 +507,13 @@ TEST_CREATE_FAST(dotProductManual1) {
 }
 
 TEST_CREATE_FAST(angleBetweenManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr float errF = 10.0f * cNumEps<Fp32>.value();
+  static constexpr double errD = 10.0 * cNumEps<Fp64>.value();
   {
     PointData<6, Fp32> const a(-6.0f, -8.0f, -143.0f, 54.0f, 41.0f, -86.0f);
     PointData<6, Fp32> const b(6.0f, 8.0f, 143.0f, -54.0f, -41.0f, 86.0f);
     TEST_REQUIRE_NEAR(float{PointMathBasic::angleBetween<false>(a, b)},
-                      cNumPi<float>, errF);
+                      cNumPi<Fp32>.value(), errF);
   }
   {
     PointData<4, Fp64> const a(3.14, -7.958, -61.671, 106.1);
@@ -522,13 +525,13 @@ TEST_CREATE_FAST(angleBetweenManual1) {
     PointData<2, Fp64> const a(-1.5, 0.5);
     PointData<2, Fp64> const b(0.5, 1.5);
     TEST_REQUIRE_NEAR(double{PointMathBasic::angleBetween<false>(a, b)},
-                      (cNumPiMult<double, 1, 2>), errD);
+                      (cNumPiMult<Fp64, 1, 2>.value()), errD);
   }
   {
     PointData<3, Fp32> const a(0.0f, 1.0f, 0.0f);
-    PointData<3, Fp32> const b(0.0f, 1.0f, cNumSqrt<float, 3>);
+    PointData<3, Fp32> const b(0.0f, 1.0f, cNumSqrt<Fp32, 3>.value());
     TEST_REQUIRE_NEAR(float{PointMathBasic::angleBetween<false>(a, b)},
-                      (cNumPiMult<float, 1, 3>), errF);
+                      (cNumPiMult<Fp32, 1, 3>.value()), errF);
   }
   // TODO Testing for stability of near parallel vectors. The standard acos
   // method gets very unstable there. If checking correctness of the atan2
@@ -538,8 +541,8 @@ TEST_CREATE_FAST(angleBetweenManual1) {
 }
 
 TEST_CREATE_FAST(cross2dManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr float errF = 10.0f * cNumEps<Fp32>.value();
+  static constexpr double errD = 10.0 * cNumEps<Fp64>.value();
   {
     PointData<2, Fp32> const a(12.0f, 15.0f);
     PointData<2, Fp32> const b(12.0f, -15.0f);
@@ -563,8 +566,8 @@ TEST_CREATE_FAST(cross2dManual1) {
 }
 
 TEST_CREATE_FAST(cross3dManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<3, Fp64> const a(1.7, 0.0, 0.8);
     PointData<3, Fp64> const b(0.8, 0.0, 1.7);
@@ -592,8 +595,8 @@ TEST_CREATE_FAST(cross3dManual1) {
 }
 
 TEST_CREATE_FAST(interpolateManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<4, Fp32> const a(1.6f, 3.2f, 4.8f, 6.4f);
     PointData<4, Fp32> const b(1.5f, 3.0f, 4.5f, 6.0f);
@@ -622,8 +625,8 @@ TEST_CREATE_FAST(interpolateManual1) {
 }
 
 TEST_CREATE_FAST(midpointManual1) {
-  static constexpr float errF = 10.0f * cNumEps<float>;
-  static constexpr double errD = 10.0 * cNumEps<double>;
+  static constexpr Fp32 errF = 10.0f * cNumEps<Fp32>;
+  static constexpr Fp64 errD = 10.0 * cNumEps<Fp64>;
   {
     PointData<4, Fp32> const a(-3.0f, 9.5f, 2.6662f, -3.9999999998f);
     PointData<4, Fp32> const b(3.0f, -9.9f, 2.6668f, -4.0f);
@@ -854,7 +857,7 @@ TEST_CREATE_FAST(divEqRandom1) {
         }
         PointMathBasic::divEq(a, b);
         // We may actually multiply 1/b for performance so approx compare
-        return isEqCompRel(a, c, cNumEps<typename T::FpType>);
+        return isEqCompRel(a, c, cNumEps<T>);
       });
 }
 
@@ -952,7 +955,7 @@ struct MaxErrs {
     }
     auto const fpStringAndEps = []<typename T>(T v) -> std::string {
       return std::format("{} ({} * eps)", fpString(v),
-                         fpString(v / cNumEps<T>));
+                         fpString(v / cNumEps<tkoz::ff::Number<T>>.value()));
     };
     TEST_MESSAGE_ALWAYS(
         std::format("maxRelErrF = {}", fpStringAndEps(mMaxRelF)));
@@ -983,8 +986,8 @@ TEST_CREATE_FAST(dotProductRandom1) {
 
   runRandomTestsAllParams<1, 10>(
       42 /*seed*/, 500 /*trials*/,
-      [&errs]<std::size_t N, typename T>(PointData<N, T> a,
-                                         PointData<N, T> b) -> bool {
+      [&errs]<std::size_t N, cNumberType T>(PointData<N, T> a,
+                                            PointData<N, T> b) -> bool {
         using F = T::FpType;
         F c{0.0};
         for (std::size_t i = 0; i < N; ++i) {
@@ -994,11 +997,11 @@ TEST_CREATE_FAST(dotProductRandom1) {
 
     // The math behaves differently on each compiler so different tolerances
 #ifdef __clang__
-        static constexpr F relTol = F{175.0} * cNumEps<F>;
-        static constexpr F absTol = F{100.0} * cNumEps<F>;
+        static constexpr F relTol = F{175.0} * cNumEps<T>.value();
+        static constexpr F absTol = F{100.0} * cNumEps<T>.value();
 #elifdef __GNUC__
-        static constexpr F relTol = F{120.0} * cNumEps<F>;
-        static constexpr F absTol = F{200.0} * cNumEps<F>;
+        static constexpr F relTol = F{120.0} * cNumEps<T>.value();
+        static constexpr F absTol = F{200.0} * cNumEps<T>.value();
 #else
 #error "did not write this with a tolerance for other compilers"
 #endif
@@ -1030,8 +1033,8 @@ TEST_CREATE_FAST(angleBetweenRandom1) {
 
   runRandomTestsAllParams<1, 10>(
       42 /*seed*/, 500 /*trials*/,
-      [&errs]<std::size_t N, typename T>(PointData<N, T> a,
-                                         PointData<N, T> b) -> bool {
+      [&errs]<std::size_t N, cNumberType T>(PointData<N, T> a,
+                                            PointData<N, T> b) -> bool {
         // Test with basic acos method, but handle 1d separately
         using F = T::FpType;
         if constexpr (N == 1) {
@@ -1040,10 +1043,11 @@ TEST_CREATE_FAST(angleBetweenRandom1) {
           F const c = F{PointMathBasic::template angleBetween<false>(a, b)};
           if (a.template at<0>() * b.template at<0>() < F{0.0}) {
             // Opposite direction
-            return std::abs(c - cNumPi<F>) < F{1.0} * cNumEps<F>;
+            return std::abs(c - cNumPi<T>.value()) <
+                   F{1.0} * cNumEps<T>.value();
           } else {
             // Same direction
-            return F{0.0} <= c && c < F{1.0} * cNumEps<F>;
+            return F{0.0} <= c && c < F{1.0} * cNumEps<T>.value();
           }
         } else {
           F aDotB{0.0};
@@ -1071,15 +1075,15 @@ TEST_CREATE_FAST(angleBetweenRandom1) {
           // F const relTol = F{360.0} * cNumEps<F>;
           // F const absTol = F{60.0} * cNumEps<F>;
           // With Clang22 changed to this
-          F const relTol = F{360.0} * cNumEps<F>;
-          F const absTol = F{120.0} * cNumEps<F>;
+          F const relTol = F{360.0} * cNumEps<T>.value();
+          F const absTol = F{120.0} * cNumEps<T>.value();
 #elifdef __GNUC__
-          F const edgeDist = std::min(c, cNumPi<F> - c);
-          F const relTol = F{80.0} * cNumEps<F>;
+          F const edgeDist = std::min(c, cNumPi<T>.value() - c);
+          F const relTol = F{80.0} * cNumEps<T>.value();
           // Some huge 55000*eps shows up (double), so we try to use smaller
           // tolerance away from the edges and let it increase near the edges.
           // GCC seems to be less stable than Clang near instability points
-          F const absTol = F{220.0} * cNumEps<F> / std::sqrt(edgeDist);
+          F const absTol = F{220.0} * cNumEps<T>.value() / std::sqrt(edgeDist);
 #else
 #error "did not write this with a tolerance for other compilers"
 #endif
@@ -1112,8 +1116,8 @@ TEST_CREATE_FAST(angleBetweenRandom2) {
 
   runRandomTestsAllParams<1, 10>(
       42 /*seed*/, 500 /*trials*/,
-      [&errs]<std::size_t N, typename T>(PointData<N, T> a,
-                                         PointData<N, T> b) -> bool {
+      [&errs]<std::size_t N, cNumberType T>(PointData<N, T> a,
+                                            PointData<N, T> b) -> bool {
         // Test with something more numerically stable
         using F = T::FpType;
         F const dot = F{PointMathBasic::dotProduct(a, b)};
@@ -1125,14 +1129,14 @@ TEST_CREATE_FAST(angleBetweenRandom2) {
 #ifdef __clang__
         // Error goes up to ~5000*eps relative, probably where dot product is
         // less relatively stable near orthogonality
-        F const midDist = std::abs(angle - cNumPiMult<F, 1, 2>);
-        F const relTol = F{40.0} * cNumEps<F> / std::sqrt(midDist);
-        F const absTol = F{100.0} * cNumEps<F> / std::sqrt(midDist);
+        F const midDist = std::abs(angle - cNumPiMult<T, 1, 2>.value());
+        F const relTol = F{40.0} * cNumEps<T>.value() / std::sqrt(midDist);
+        F const absTol = F{100.0} * cNumEps<T>.value() / std::sqrt(midDist);
 #elifdef __GNUC__
         // GCC error seems higher but it's hard to explain compiler differences
-        F const midDist = std::abs(angle - cNumPiMult<F, 1, 2>);
-        F const relTol = F{60.0} * cNumEps<F> / std::sqrt(midDist);
-        F const absTol = F{150.0} * cNumEps<F> / std::sqrt(midDist);
+        F const midDist = std::abs(angle - cNumPiMult<T, 1, 2>.value());
+        F const relTol = F{60.0} * cNumEps<T>.value() / std::sqrt(midDist);
+        F const absTol = F{150.0} * cNumEps<T>.value() / std::sqrt(midDist);
 #else
 #error "did not write this with a tolerance for other compilers"
 #endif
@@ -1166,7 +1170,7 @@ TEST_CREATE_FAST(cross2dRandom1) {
 
   std::mt19937_64 rng(42 /*seed*/);
 
-  auto const func = [&errs]<std::size_t N, typename T>(
+  auto const func = [&errs]<std::size_t N, cNumberType T>(
                         PointData<N, T> a, PointData<N, T> b) -> bool {
     static_assert(N == 2);
     using F = T::FpType;
@@ -1175,12 +1179,12 @@ TEST_CREATE_FAST(cross2dRandom1) {
 
     // The math behaves differently on each compiler so different tolerances
 #ifdef __clang__
-    static constexpr F relTol = F{10.0} * cNumEps<F>;
-    static constexpr F absTol = F{10.0} * cNumEps<F>;
+    static constexpr F relTol = F{10.0} * cNumEps<T>.value();
+    static constexpr F absTol = F{10.0} * cNumEps<T>.value();
 #elifdef __GNUC__
     // Both were 10*eps before, GCC16 changes things?
-    static constexpr F relTol = F{35.0} * cNumEps<F>;
-    static constexpr F absTol = F{35.0} * cNumEps<F>;
+    static constexpr F relTol = F{35.0} * cNumEps<T>.value();
+    static constexpr F absTol = F{35.0} * cNumEps<T>.value();
 #else
 #error "did not write this with a tolerance for other compilers"
 #endif
@@ -1215,7 +1219,7 @@ TEST_CREATE_FAST(cross3dRandom1) {
 
   std::mt19937_64 rng(42 /*seed*/);
 
-  auto const func = [&errs]<std::size_t N, typename T>(
+  auto const func = [&errs]<std::size_t N, cNumberType T>(
                         PointData<N, T> a, PointData<N, T> b) -> bool {
     static_assert(N == 3);
     using F = T::FpType;
@@ -1226,11 +1230,11 @@ TEST_CREATE_FAST(cross3dRandom1) {
 
     // The math behaves differently on each compiler so different tolerances
 #ifdef __clang__
-    static constexpr F relTol = F{10.0} * cNumEps<F>;
-    static constexpr F absTol = F{30.0} * cNumEps<F>;
+    static constexpr F relTol = F{10.0} * cNumEps<T>.value();
+    static constexpr F absTol = F{30.0} * cNumEps<T>.value();
 #elifdef __GNUC__
-    static constexpr F relTol = F{10.0} * cNumEps<F>;
-    static constexpr F absTol = F{120.0} * cNumEps<F>;
+    static constexpr F relTol = F{10.0} * cNumEps<T>.value();
+    static constexpr F absTol = F{120.0} * cNumEps<T>.value();
 #else
 #error "did not write this with a tolerance for other compilers"
 #endif

@@ -5,28 +5,28 @@
 #include <tkoz/ff/Types.hpp>
 
 #include <cmath>
+#include <concepts>
 #include <type_traits>
 #include <utility>
 
 namespace tkoz::ff {
 
 /// Type generic simultaneous sine and cosine, calling the libm function from
-/// \a <cmath>. This may only be available on GCC and Clang and is just as
+/// \c <cmath>. This may only be available on GCC and Clang and is just as
 /// accurate as std::sin and std::cos, and in practice, the most stable choice.
 /// \param x The input angle
-/// \return A \a std::pair containing \a [sin(x),cos(x)]
-template <typename T>
-[[nodiscard]] inline constexpr auto cmathSinCos(T &&x) noexcept
-    -> std::pair<std::decay_t<T>, std::decay_t<T>> {
-  using U = std::decay_t<T>;
+/// \return A \c std::pair containing \c [sin(x),cos(x)]
+template <std::floating_point T>
+[[nodiscard]] inline constexpr auto cmathSinCos(T x) noexcept
+    -> std::pair<T, T> {
 #ifdef __GLIBC__
-  U sinX;
-  U cosX;
-  if constexpr (std::is_same_v<U, float>) {
+  T sinX;
+  T cosX;
+  if constexpr (std::is_same_v<T, float>) {
     ::sincosf(x, &sinX, &cosX);
-  } else if constexpr (std::is_same_v<U, double>) {
+  } else if constexpr (std::is_same_v<T, double>) {
     ::sincos(x, &sinX, &cosX);
-  } else if constexpr (std::is_same_v<U, long double>) {
+  } else if constexpr (std::is_same_v<T, long double>) {
     ::sincosl(x, &sinX, &cosX);
   } else {
     static_assert(false);

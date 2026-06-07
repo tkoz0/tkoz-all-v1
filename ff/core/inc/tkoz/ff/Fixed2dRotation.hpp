@@ -8,7 +8,7 @@
 namespace tkoz::ff {
 
 /// \brief Simple class for fixed rotations in the 2D plane.
-template <cPrimitiveFpType T> class Fixed2dRotation {
+template <cNumberType T> class Fixed2dRotation {
 private:
   // These would have been const but they must be initialized after computing
   // simulatneous sincos so the initializer list does not work.
@@ -20,7 +20,7 @@ public:
   /// The rotation is counterclockwise in the standard coordinate plane.
   /// \param theta The rotation angle in radians.
   [[nodiscard]] inline explicit Fixed2dRotation(T theta) noexcept {
-    const auto [s, c] = cmathSinCos(theta);
+    const auto [s, c] = cmathSinCos(theta.value());
     mSinTheta = s;
     mCosTheta = c;
   }

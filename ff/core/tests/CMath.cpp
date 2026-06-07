@@ -5,48 +5,25 @@
 
 #include <tuple>
 
-enum ErrType : uint8_t { ABS, REL };
-
-// Helper for error bounds
-template <typename T> struct FpErr {
-  ErrType mErrType;
-  T mErrVal;
-  FpErr() = delete;
-  FpErr(ErrType errType, T errVal) : mErrType(errType), mErrVal(errVal) {}
-  inline void check(T actual, T expected) {
-    switch (mErrType) {
-    case ABS: {
-      TEST_REQUIRE_NEAR(actual, expected, mErrVal);
-    } break;
-    case REL: {
-      TEST_REQUIRE_NEAR(actual, expected, mErrVal);
-    } break;
-    }
-  }
-};
-
-// Run a test with sincos using both values and appropriate error bounds
-[[maybe_unused]] auto doTest =
-    []<typename T>(T arg, T sinExpected, T cosExpected, FpErr<T> errTestSin,
-                   FpErr<T> errTestCos) {
-      auto [sinActual, cosActual] = tkoz::ff::cmathSinCos(arg);
-      errTestSin.check(sinActual, sinExpected);
-      errTestCos.check(cosActual, cosExpected);
-    };
-
 using tkoz::ff::cmathSinCos;
 using tkoz::ff::cNumEps;
 using tkoz::ff::cNumPi;
 using tkoz::ff::cNumSqrt;
+using tkoz::ff::Fp32;
+using tkoz::ff::Fp64;
 
 TEST_CREATE_FAST(cmathSinCosHalfpiMult) {
   // Note: use relative error near 1 and absolute error near 0
-  static constexpr float tolFA = 10.0f * cNumEps<float>;  // float absolute
-  static constexpr float tolFR = 10.0f * cNumEps<float>;  // float relative
-  static constexpr double tolDA = 10.0 * cNumEps<double>; // double absolute
-  static constexpr double tolDR = 10.0 * cNumEps<double>; // double relative
-  static constexpr float piF = cNumPi<float>;
-  static constexpr double piD = cNumPi<double>;
+  static constexpr float tolFA =
+      10.0f * cNumEps<Fp32>.value(); // float absolute
+  static constexpr float tolFR =
+      10.0f * cNumEps<Fp32>.value(); // float relative
+  static constexpr double tolDA =
+      10.0 * cNumEps<Fp64>.value(); // double absolute
+  static constexpr double tolDR =
+      10.0 * cNumEps<Fp64>.value(); // double relative
+  static constexpr float piF = cNumPi<Fp32>.value();
+  static constexpr double piD = cNumPi<Fp64>.value();
   { // 0
     auto const [sinF, cosF] = cmathSinCos(0.0f);
     auto const [sinD, cosD] = cmathSinCos(0.0);
@@ -119,12 +96,13 @@ TEST_CREATE_FAST(cmathSinCosHalfpiMult) {
 
 TEST_CREATE_FAST(cmathSinCosThirdpiMult) {
   // Note: all values are not near 0 so only use relative error
-  static constexpr float tolF = 10.0f * cNumEps<float>;  // float relative
-  static constexpr double tolD = 10.0 * cNumEps<double>; // double relative
-  static constexpr float piF = cNumPi<float>;
-  static constexpr double piD = cNumPi<double>;
-  static constexpr float r3F = cNumSqrt<float, 3> / 2.0f;
-  static constexpr double r3D = cNumSqrt<double, 3> / 2.0;
+  static constexpr float tolF = 10.0f * cNumEps<Fp32>.value(); // float relative
+  static constexpr double tolD =
+      10.0 * cNumEps<Fp64>.value(); // double relative
+  static constexpr float piF = cNumPi<Fp32>.value();
+  static constexpr double piD = cNumPi<Fp64>.value();
+  static constexpr float r3F = cNumSqrt<Fp32, 3>.value() / 2.0f;
+  static constexpr double r3D = cNumSqrt<Fp64, 3>.value() / 2.0;
   { // pi/3
     auto [sinF, cosF] = cmathSinCos(piF / 3.0f);
     auto [sinD, cosD] = cmathSinCos(piD / 3.0);
@@ -189,12 +167,13 @@ TEST_CREATE_FAST(cmathSinCosThirdpiMult) {
 
 TEST_CREATE_FAST(cmathSinCosFourthpiMult) {
   // Note: all values are not near 0 so only use relative error
-  static constexpr float tolF = 10.0f * cNumEps<float>;  // float relative
-  static constexpr double tolD = 10.0 * cNumEps<double>; // double relative
-  static constexpr float piF = cNumPi<float>;
-  static constexpr double piD = cNumPi<double>;
-  static constexpr float r2F = cNumSqrt<float, 2> / 2.0f;
-  static constexpr double r2D = cNumSqrt<double, 2> / 2.0;
+  static constexpr float tolF = 10.0f * cNumEps<Fp32>.value(); // float relative
+  static constexpr double tolD =
+      10.0 * cNumEps<Fp64>.value(); // double relative
+  static constexpr float piF = cNumPi<Fp32>.value();
+  static constexpr double piD = cNumPi<Fp64>.value();
+  static constexpr float r2F = cNumSqrt<Fp32, 2>.value() / 2.0f;
+  static constexpr double r2D = cNumSqrt<Fp64, 2>.value() / 2.0;
   { // pi/4
     auto [sinF, cosF] = cmathSinCos(piF / 4.0f);
     auto [sinD, cosD] = cmathSinCos(piD / 4.0);
@@ -259,12 +238,13 @@ TEST_CREATE_FAST(cmathSinCosFourthpiMult) {
 
 TEST_CREATE_FAST(cmathSinCosSixthpiMult) {
   // Note: all values are not near 0 so only use relative error
-  static constexpr float tolF = 10.0f * cNumEps<float>;  // float relative
-  static constexpr double tolD = 10.0 * cNumEps<double>; // double relative
-  static constexpr float piF = cNumPi<float>;
-  static constexpr double piD = cNumPi<double>;
-  static constexpr float r3F = cNumSqrt<float, 3> / 2.0f;
-  static constexpr double r3D = cNumSqrt<double, 3> / 2.0;
+  static constexpr float tolF = 10.0f * cNumEps<Fp32>.value(); // float relative
+  static constexpr double tolD =
+      10.0 * cNumEps<Fp64>.value(); // double relative
+  static constexpr float piF = cNumPi<Fp32>.value();
+  static constexpr double piD = cNumPi<Fp64>.value();
+  static constexpr float r3F = cNumSqrt<Fp32, 3>.value() / 2.0f;
+  static constexpr double r3D = cNumSqrt<Fp64, 3>.value() / 2.0;
   { // pi/6
     auto [sinF, cosF] = cmathSinCos(piF / 6.0f);
     auto [sinD, cosD] = cmathSinCos(piD / 6.0);

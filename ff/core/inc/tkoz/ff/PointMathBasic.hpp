@@ -102,7 +102,7 @@ struct PointMathBasic {
                                                  U right) noexcept
       -> PointData<N, T> {
     if constexpr (N >= 2) {
-      return mul(left, cNumInteger<typename T::FpType, 1> / right);
+      return mul(left, cNumInteger<T, 1> / right);
     } else {
       PointData<N, T> result;
       for (std::size_t i = 0; i < N; ++i) {
@@ -121,7 +121,7 @@ struct PointMathBasic {
       // TODO is N >= 2 the right threshold?
       // The answer may differ by an ulp, but in practice the speed gain from
       // this method is worth it for being a single ulp off sometimes.
-      mulEq(left, cNumInteger<typename T::FpType, 1> / right);
+      mulEq(left, cNumInteger<T, 1> / right);
     } else {
       for (std::size_t i = 0; i < N; ++i) {
         left[i] /= right;
@@ -216,7 +216,7 @@ struct PointMathBasic {
       return std::signbit(F{left.template at<0>()}) ==
                      std::signbit(F{right.template at<0>()})
                  ? F{0.0}
-                 : cNumPi<F>;
+                 : cNumPi<T>;
     } else if constexpr (N == 2) {
       // Special case 2d with "cross product"
       return std::atan2(std::abs(F{cross2d(left, right)}),
@@ -238,7 +238,7 @@ struct PointMathBasic {
       auto add = left;
       subEq(sub, right);
       addEq(add, right);
-      return cNumInteger<F, 2> *
+      return cNumInteger<T, 2> *
              std::atan2(F{pNormIntCt<2>(sub)}, F{pNormIntCt<2>(add)});
     }
 
