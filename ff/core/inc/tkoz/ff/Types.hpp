@@ -40,10 +40,16 @@ namespace tkoz::ff {
 /// TODO should this library be compiled separately for 32 and 64 bit?
 
 /// Allowed primitive floating point types, only float and double currently.
+/// The intention, although impractical, is to allow this to extend to higher
+/// precision types like double-double or quad precision at some point.
 template <typename T>
 concept cPrimitiveFpType =
     std::is_same_v<T, float> || std::is_same_v<T, double>;
 
+/// A wrapper class for floating point types. Why do we have this?
+/// The intention is to be able to extend the renderer to other precision types
+/// in the future and to enforce math policies for computation stability/speed.
+/// This kind of design seems rather impractical and overengineered though...
 template <cPrimitiveFpType NumT> class Number;
 
 /// 32 bit number type (float wrapper)
